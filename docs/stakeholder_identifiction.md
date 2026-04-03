@@ -9,6 +9,7 @@ This document identifies the key stakeholders involved in or affected by the Fin
 ## Stakeholder Categories
 
 The project groups stakeholders into four categories:
+
 - primary stakeholders
 - secondary stakeholders
 - technical stakeholders
@@ -21,6 +22,7 @@ The project groups stakeholders into four categories:
 **Description:** People who use the system to track personal income and expenses.
 
 **Needs:**
+
 - fast transaction entry
 - clear financial summaries and analytics
 - reliable and easy-to-use interaction
@@ -30,6 +32,7 @@ The project groups stakeholders into four categories:
 **Description:** Users who primarily interact through the WhatsApp chatbot.
 
 **Needs:**
+
 - natural and flexible message input
 - quick response times
 - accurate interpretation of messages
@@ -41,29 +44,34 @@ The project groups stakeholders into four categories:
 **Description:** Users who need more control and deeper insight into their financial records.
 
 **Needs:**
+
 - stronger filtering and categorization
 - richer analytics
 - better record management
 
-### Future Web/Desktop Users
+### Web and PWA Users
 
-**Description:** Users who will need larger-screen reporting and more advanced data interaction.
+**Description:** Users who rely on larger-screen reporting, browser access, or installable desktop-like usage.
 
 **Needs:**
+
 - stronger visualization
 - detailed reporting controls
 - export and management tools
+- reliable offline behavior
 
 ## Technical Stakeholders
 
 ### Project Owner / Developer (Lespa)
 
 **Responsibilities:**
+
 - define the product direction
 - build and maintain the system
 - keep the architecture scalable and maintainable
 
 **Needs:**
+
 - clear requirements
 - clean documentation
 - efficient development workflow
@@ -71,11 +79,13 @@ The project groups stakeholders into four categories:
 ### Backend System Team / Platform Layer
 
 **Responsibilities:**
+
 - process and store transaction data
 - support analytics and chatbot flows
 - enforce security and reliability
 
 **Needs:**
+
 - high reliability
 - secure data handling
 - scalable service design
@@ -106,4 +116,4 @@ The project groups stakeholders into four categories:
 
 ## Conclusion
 
-Finance Ledger should be designed first around end users and chat-based users, while still leaving room for technical scalability and future power-user workflows.
+Finance Ledger should be designed first around end users and chat-based users, while still leaving room for technical scalability and richer browser-based workflows.

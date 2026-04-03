@@ -9,11 +9,16 @@ This document collects the key UML and process diagrams used to describe Finance
 ## Diagram Coverage
 
 The documentation includes:
+
 - use case diagram
 - class diagram
 - sequence diagrams
 - activity diagrams
 - component diagram
+
+## Diagram Asset Note
+
+Some image exports in `docs/images/` were produced during earlier planning phases, so a few filenames still contain older wording. The textual labels and Mermaid references in this document are the current source of truth for the web application direction.
 
 ## Use Case Diagram
 
@@ -31,56 +36,71 @@ The documentation includes:
 
 ```mermaid
 classDiagram
-    class User {
+    class Profile {
         +UUID id
         +String name
         +String email
         +String phoneNumber
-        +String passwordHash
+        +String preferredCurrency
+    }
+
+    class Account {
+        +String id
+        +String remoteId
+        +UUID userId
+        +String name
+        +Decimal initialBalance
+        +String syncStatus
     }
 
     class Category {
-        +UUID id
+        +String id
+        +String remoteId
         +UUID userId
         +String name
         +String type
-        +Boolean isDefault
+        +Boolean isSystem
     }
 
     class Transaction {
-        +UUID id
+        +String id
+        +String remoteId
         +UUID userId
-        +UUID categoryId
+        +String accountId
+        +String categoryId
         +Decimal amount
         +String type
-        +String account
-        +String description
         +Date transactionDate
-        +String source
-        +String rawInput
-        +UUID importRecordId
+        +String syncStatus
     }
 
+    class Settings
+    class NotificationPreference
     class ImportRecord
     class ExportRecord
+    class SyncOperation
     class ChatbotIdentity
 
-    User "1" --> "0..*" Category : owns
-    User "1" --> "0..*" Transaction : records
-    User "1" --> "0..*" ImportRecord : performs
-    User "1" --> "0..*" ExportRecord : performs
-    User "1" --> "0..*" ChatbotIdentity : links
+    Profile "1" --> "0..*" Account : owns
+    Profile "1" --> "0..*" Category : owns
+    Profile "1" --> "0..*" Transaction : records
+    Profile "1" --> "1" Settings : configures
+    Profile "1" --> "1" NotificationPreference : sets
+    Profile "1" --> "0..*" ImportRecord : performs
+    Profile "1" --> "0..*" ExportRecord : performs
+    Profile "1" --> "0..*" ChatbotIdentity : links
+    Account "1" --> "0..*" Transaction : receives
     Category "1" --> "0..*" Transaction : classifies
-    ImportRecord "1" --> "0..*" Transaction : creates
+    Transaction "1" --> "0..*" SyncOperation : queues
 ```
 
 ## Sequence Diagrams
 
-### Add Transaction via Mobile App
+### Add Transaction via Web App
 
-**Purpose:** Show how a manual transaction is created from the app.
+**Purpose:** Show how a manual transaction is created from the web application.
 
-![Sequence Diagram - Add Transaction via Mobile](images/Sequence%20Diagram%20%20%20-%20Add%20Transaction%20via%20Mobile%20App.png)
+![Sequence Diagram - Add Transaction](images/Sequence%20Diagram%20%20%20-%20Add%20Transaction%20via%20Mobile%20App.png)
 
 ### Add Transaction via WhatsApp Chatbot
 
@@ -110,7 +130,7 @@ classDiagram
 
 ### Manual Entry Activity
 
-**Purpose:** Show the user flow for manual app-based entry.
+**Purpose:** Show the user flow for manual web-based entry.
 
 ![Activity Diagram - Manual Entry](images/Activity%20Diagram%20-%20Manual%20Entry.png)
 
@@ -135,5 +155,5 @@ classDiagram
 ## Notes
 
 - The diagrams focus on the MVP and near-MVP scope.
-- The mobile app, chatbot, backend, analytics, and import/export flows all share the same backend core.
+- The web application, chatbot, backend, analytics, and import/export flows all share the same backend core.
 - The class and relationship model aligns with the ERD and database schema documentation.

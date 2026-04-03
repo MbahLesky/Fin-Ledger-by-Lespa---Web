@@ -1,115 +1,139 @@
 # Coding Standards
 
-*Project: Finance Ledger*
+*Project: Finance Ledger Web*
 
 ## Purpose
 
-This document defines the coding standards for the Finance Ledger project across the mobile app, backend services, integrations, and shared utilities.
-
-The goals are to keep the codebase:
-- clean
-- readable
-- consistent
-- scalable
-- easy to maintain
-- easy for multiple contributors to work in safely
+This document defines the coding standards for the Finance Ledger web application across frontend code, local persistence, sync logic, Supabase integration, and shared utilities.
 
 ## Core Principles
 
-- Write for humans first.
-- Prefer clarity over cleverness.
-- Keep code consistent across modules.
-- Give each file, class, and function one clear responsibility.
-- Reuse code carefully without premature abstraction.
-- Keep functions focused and small.
-- Remove duplicate logic when repetition becomes real.
-- Handle failures explicitly and clearly.
+- write for humans first
+- prefer clarity over cleverness
+- keep code consistent across features
+- give each file, component, hook, and service one clear responsibility
+- keep local-first behavior explicit in data-writing code
+- validate inputs at the form or service boundary
+- keep browser, sync, and backend details out of simple UI components
 
 ## Naming Conventions
 
 ### General Rules
 
-- Use names that reveal intent.
-- Avoid vague names such as `data`, `item`, or `temp` when better context is available.
-- Use action-based names for functions and noun-based names for classes.
+- use names that reveal intent
+- avoid vague names such as `data`, `item`, or `temp` when better context is available
+- use action-based names for functions and noun-based names for types and components
 
-### Examples
+### TypeScript Style
 
-| Good | Avoid |
-| --- | --- |
-| `createTransaction` | `doStuff` |
-| `monthlyExpenseSummary` | `handleData` |
-| `syncPendingEntries` | `tempFunc` |
+- use `kebab-case` for filenames unless the codebase adopts a stronger convention for specific file types
+- use `camelCase` for variables, functions, hooks, and store actions
+- use `PascalCase` for React components, TypeScript types, and Zod schemas exported as named objects
+- use `UPPER_SNAKE_CASE` for true compile-time constants
 
-### Language-Specific Style
+## Project Organization Rules
 
-- **Dart / Flutter:** use `snake_case` for files, `camelCase` for variables and methods, and `PascalCase` for classes and widgets.
-- **TypeScript / JavaScript:** use team-approved `kebab-case` or consistent file naming, `camelCase` for variables and functions, and `PascalCase` for classes and React components.
-- **Constants:** use `UPPER_SNAKE_CASE` where the language or team convention expects true constants.
+- keep route entry points in `src/pages/`
+- keep feature-specific code inside `src/features/`
+- keep reusable UI primitives in `src/components/`
+- keep Dexie schema, repositories, and local migrations in `src/db/`
+- keep Supabase and external SDK setup in `src/lib/` or `src/services/`
+- keep app-facing state in focused Zustand stores under `src/store/`
 
-## File Organization Rules
+## React and Component Standards
 
-- Keep each file focused on one purpose.
-- Split large files when they start mixing concerns.
-- Keep feature-related code together.
-- Move truly reusable code to shared locations, not everything that looks reusable at first glance.
+- prefer functional components with TypeScript props
+- keep presentational components free of direct persistence and Supabase calls
+- co-locate small feature-only components with their feature
+- lift shared UI only when reuse is real
+- use route/page components to compose feature sections, not to own all business logic
+- keep side effects in hooks or services rather than inline across render code
 
-## Formatting Standards
+## Hook Standards
 
-- Use automated formatters whenever possible.
-- Run `dart format` for Dart and Flutter code.
-- Use Prettier for JavaScript or TypeScript if those stacks are introduced.
-- Run linting tools regularly such as `dart analyze` and ESLint where applicable.
-- Avoid manual formatting that drifts from project tooling.
+- custom hooks should start with `use`
+- hooks should encapsulate reusable React behavior, not become hidden service layers for every domain operation
+- keep hooks deterministic and dependency-safe
+- prefer returning clear named fields over opaque tuples unless the pattern is obvious
+
+## Zustand Standards
+
+- stores should hold UI-facing state, orchestration state, and user-triggered actions
+- stores should not replace Dexie as the durable source of truth
+- avoid copying entire persistent datasets into long-lived store state when a repository query or live subscription is more appropriate
+- expose selectors for frequently consumed slices to reduce unnecessary rerenders
+
+## Form and Validation Standards
+
+- use React Hook Form for user-editable forms
+- use Zod for schema validation and input parsing
+- keep validation schemas close to the feature that owns them
+- map validation errors into user-readable messages
+- validate imported CSV data before it reaches persistence code
+
+## Supabase Standards
+
+- create and share Supabase clients through a centralized setup module
+- never scatter raw environment reads across components
+- keep auth, profile, and remote sync operations inside services or repositories
+- never expose service-role credentials in the web client
+- rely on RLS and authenticated ownership instead of trusting client-only filters
+
+## Dexie and Sync Standards
+
+- Dexie repositories own local CRUD boundaries
+- all syncable writes must succeed locally before being enqueued for remote sync
+- sync metadata fields such as `sync_status`, `sync_error`, and `last_synced_at` must be updated consistently
+- use soft delete for syncable entities unless a documented exception exists
+- schema migrations must be explicit, tested, and reversible in intent
+
+## Routing Standards
+
+- define route constants centrally
+- use route guards for signed-out, onboarding, and protected areas
+- avoid hard-coded route strings spread across features
+- align page URLs with product language users understand
+
+## Formatting and Tooling
+
+- use Prettier for formatting
+- use ESLint for linting
+- use TypeScript strictness appropriate for production code
+- avoid manual formatting that drifts from project tooling
 
 ## Commenting Standards
 
 Comments should explain **why**, not restate the obvious.
 
-### Good Uses of Comments
+Good uses:
 
-- explaining non-obvious business rules
-- documenting integration quirks
-- clarifying temporary workarounds
-- highlighting sync or parsing edge cases
+- non-obvious finance rules
+- sync edge cases
+- browser capability constraints
+- import/export quirks
 
-### Poor Uses of Comments
+Poor uses:
 
-- restating what the code already says
+- restating the code
 - keeping outdated notes after refactors
-- leaving misleading TODOs without context
-
-## Function and Class Standards
-
-- Prefer guard clauses over deep nesting.
-- Keep side effects obvious.
-- Validate inputs close to the boundary.
-- Separate UI concerns from business logic.
-- Avoid huge service classes that own unrelated responsibilities.
-
-## Error Handling Standards
-
-- Fail early when required data is missing.
-- Return actionable error messages where appropriate.
-- Log integration failures clearly.
-- Never silently swallow important exceptions.
-- Handle user-facing errors in a helpful and non-technical way.
+- leaving TODOs without clear intent
 
 ## Testing Expectations
 
-- Test critical financial calculations.
-- Test transaction validation and category matching.
-- Test chatbot parsing rules and fallback behavior.
-- Test import and export flows with valid and invalid samples.
-- Add regression tests when fixing bugs.
+- test critical financial calculations
+- test transaction validation and category matching
+- test import and export flows with valid and invalid samples
+- test sync queue and retry behavior
+- test onboarding persistence and route guards
+- add regression tests when fixing bugs
 
-## Git and Review Standards
+## Review Standards
 
-- Keep commits focused and understandable.
-- Prefer small, reviewable changes over large mixed commits.
-- Do not merge code that has unclear naming, weak validation, or missing critical test coverage.
-- Review for correctness, readability, maintainability, and regression risk.
+- keep changes focused and understandable
+- prefer small, reviewable changes over mixed rewrites
+- do not merge code with unclear naming, weak validation, or missing critical test coverage
+- review for correctness, readability, maintainability, offline behavior, and sync risk
 
 ## Summary
 
-The standard for Finance Ledger is simple: write code that future contributors can understand quickly and extend safely.
+The coding standard for Finance Ledger Web is simple: keep the React code clean, keep persistence boundaries explicit, keep sync logic disciplined, and make the offline-first behavior easy for future contributors to understand and extend.

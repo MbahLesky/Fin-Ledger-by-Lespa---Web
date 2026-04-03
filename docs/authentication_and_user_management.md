@@ -1,119 +1,92 @@
 # Authentication and User Management
 
-*Finance Ledger - Supabase Auth Foundation with PowerSync Context*
+*Finance Ledger - Supabase Auth for the Web Client*
 
 ## Purpose
 
-This document explains why Supabase is being used, what is implemented in the current auth phase, how authenticated users map to the app-level profile record, and how auth now scopes PowerSync.
+This document explains how Finance Ledger uses Supabase authentication and app-level profile records in the web version of the product.
 
-Current milestone date: **March 27, 2026**.
+## Why Supabase Is Used
 
-## Why Supabase Is Added Now
+Finance Ledger remains local-first for finance data, but it still needs:
 
-Finance Ledger already works offline with Drift and Riverpod. Supabase is being added now for identity, session management, and a durable remote user profile foundation without changing the app into a sync-first product too early.
+- secure identity
+- browser session restore
+- a durable remote user profile
+- authenticated ownership boundaries for synced ledger data
 
-This phase is intentionally limited to:
-
-- real authentication
-- session restore on app launch
-- app-level profile storage in Supabase
-- ownership-ready local records through `user_id`
-
-This phase does **not** include:
-
-- advanced conflict-resolution UX
-- chatbot backend integration
-- service-role usage in the Flutter client
-- advanced backend automation
+Supabase provides those capabilities without changing the product into a remote-only application.
 
 ## Supported Authentication Methods
 
-The app currently has one fully active Supabase-backed auth method:
+Fully active in the current web direction:
 
 - email and password
 
-The following auth options remain visible in the UI, but they are not active in this phase and currently respond with non-blocking coming-soon guidance:
+Visible in the UI but intentionally inactive in the current phase:
 
 - phone number with OTP verification
-- Google OAuth sign in / sign up
+- Google OAuth sign in and sign up
 
-The Flutter client uses the Supabase publishable/anon key only.
+The web client uses only the Supabase publishable anon key.
 
 ## Configuration Model
 
-Supabase is loaded from `lib/config/supabase_configuration.dart`.
+Supabase configuration is loaded from environment variables exposed to Vite.
 
-The preferred override path is still Dart defines:
+Required variables:
 
-- `SUPABASE_URL`
-- `SUPABASE_PUBLISHABLE_KEY`
-- `POWERSYNC_URL`
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_ANON_KEY`
 
-Optional environment selector:
+Optional variables:
 
-- `APP_ENV`
+- `VITE_APP_ENV`
+- `VITE_ENABLE_PWA`
 
-Example:
-
-```text
-flutter run --dart-define-from-file=env/supabase.local.json
-```
-
-For local development in this repository, the same config file also contains an embedded development fallback so the app can still initialize if those Dart defines are not passed.
-
-Checked-in template:
-
-- `env/supabase.example.json`
-
-Local ignored file for real keys and PowerSync URL:
-
-- `env/supabase.local.json`
-
-Mobile redirect URL used by the app:
+Example local setup:
 
 ```text
-com.finledger.app://login-callback
+.env.local
+VITE_SUPABASE_URL=...
+VITE_SUPABASE_ANON_KEY=...
 ```
 
-That redirect URL must be added to the Supabase Auth URL configuration and to the Google provider setup for mobile OAuth.
+If OAuth is activated later, Supabase redirect URLs must include the production web origin, preview origins as needed, and any local development URL used by Vite.
 
 ## Auth Flow in the App
 
 ### Launch and Session Restore
 
-1. App starts.
+1. Browser app starts.
 2. Supabase initializes when configuration is present.
-3. The auth session provider checks for an existing Supabase session.
-4. If a session exists, the app restores it and ensures the profile row exists.
-5. Routing then continues to:
-   - profile completion if required
-   - onboarding if not completed
-   - dashboard if the user is already ready
+3. The session bootstrap checks for an existing authenticated session.
+4. If a session exists, the app ensures the profile row exists.
+5. Routing continues to profile completion, onboarding, or dashboard.
 
 ### New User Flow
 
 1. User registers with email and password.
 2. Supabase authenticates the user when email confirmation rules allow it, or the user confirms email and signs in afterward.
 3. Finance Ledger upserts a row in `public.profiles` using the authenticated user id.
-4. If the profile is missing a required name, the app shows profile completion.
+4. If the profile is missing required fields, the app shows profile completion.
 5. The user continues into onboarding or the main app.
 
 ### Returning User Flow
 
-1. User opens the app with a valid session.
+1. User opens the app or installed PWA with a valid session.
 2. Supabase restores the session.
 3. The app loads the matching `profiles` row.
 4. The user resumes onboarding or enters the main app.
 
 ## Supabase Auth Users vs App-Level Profiles
 
-These are different layers and must stay separate:
+These are different layers and must stay separate.
 
 ### `auth.users`
 
 - managed by Supabase Auth
 - stores authentication identity
-- not written directly by the Flutter app
 - source of the authenticated UUID returned by `auth.uid()`
 
 ### `public.profiles`
@@ -121,13 +94,11 @@ These are different layers and must stay separate:
 - managed by Finance Ledger application logic
 - stores app-facing profile fields
 - linked 1:1 to `auth.users.id`
-- used for name, email, phone number, onboarding metadata, and future app preferences
+- used for name, email, phone number, onboarding metadata, and preferred currency
 
-The Flutter app never stores passwords, OTP secrets, refresh tokens, or service-role credentials in `public.profiles`.
+Finance Ledger never stores passwords, OTP secrets, refresh tokens, or service-role credentials in `public.profiles`.
 
 ## `profiles` Table Schema
-
-Implemented in `supabase/migrations/20260326_auth_profiles.sql`.
 
 Fields:
 
@@ -145,8 +116,6 @@ Required app-profile fields in the current auth phase:
 
 - `id`
 - `name`
-- `email`
-- `phone_number`
 - `created_at`
 - `updated_at`
 
@@ -154,24 +123,23 @@ Rules:
 
 - `id` must match the authenticated Supabase user id
 - a profile row is created or updated after successful authentication
-- `email` or `phone_number` may be null depending on the auth method
 - duplicate profile rows are prevented by the primary key
 
 ## Row Level Security
 
 `public.profiles` has RLS enabled.
 
-Current policies allow each authenticated user to:
+Policies should allow each authenticated user to:
 
 - select only their own profile row
 - insert only a row whose `id` equals `auth.uid()`
 - update only their own profile row
 
-This is the first ownership boundary that later sync and backend features now build on.
+This ownership boundary matches the syncable business tables that also use `user_id = auth.uid()`.
 
 ## Local Ownership Alignment
 
-The Drift business tables already include nullable `user_id` columns:
+The local syncable tables include nullable `user_id` fields:
 
 - `accounts`
 - `categories`
@@ -179,50 +147,43 @@ The Drift business tables already include nullable `user_id` columns:
 - `settings`
 - `notification_preferences`
 
-During this phase:
+When a session exists:
 
-- the signed-in user id is stamped into newly created local business records
-- existing device data can be claimed by the first authenticated user on that device
-- if a different user signs in on the same device, the local workspace and PowerSync sync state are reset to avoid cross-account data leakage
+- newly created local business records are stamped with the authenticated user id
+- pending writes are scoped to that authenticated workspace
+- remote sync uses the same ownership model
 
-That reset behavior is intentional until full multi-device conflict handling is introduced.
+## Auth and Sync Relationship
 
-## Auth and PowerSync
+Sync uses the active Supabase session as its authenticated context.
 
-PowerSync now uses the active Supabase session as its authenticated sync context.
+Rules:
 
-Current rules:
-
-- PowerSync connects only when a valid Supabase session exists
-- the Supabase access token is reused as the PowerSync client credential
-- synced remote ledger rows are protected with `user_id = auth.uid()` RLS
-- `public.profiles` remains direct Supabase auth/profile state rather than being moved into the PowerSync path in this phase
+- sync runs only when a valid Supabase session exists
+- remote ledger rows are protected with `user_id = auth.uid()` RLS
+- `public.profiles` remains a direct auth/profile concern rather than going through the ledger sync outbox
 
 ## Onboarding and Profile Completion
 
-Auth and onboarding are now separate but connected:
+Auth and onboarding are separate but connected.
 
 - authentication establishes identity
 - profile completion fills missing app-level fields
 - onboarding sets currency, balances, and reminders
 
-The `profiles` table may also store:
-
-- `onboarding_completed`
-- `preferred_currency`
-
-These fields help the remote user record reflect app-level progress without turning the backend into the ledger source of truth yet.
+`public.profiles` may reflect onboarding progress and preferred currency without becoming the source of truth for ledger data.
 
 ## Setup Notes for Supabase Dashboard
 
-Before testing auth, the project owner must configure:
+Before testing auth, the project owner should configure:
 
-- Email auth in Supabase Auth
-- redirect URL `com.finledger.app://login-callback`
+- email auth in Supabase Auth
+- site URL for the deployed web app
+- local development redirect URLs
 
 Optional later-phase setup:
 
-- Phone auth and an SMS provider supported by Supabase
+- phone auth and an SMS provider supported by Supabase
 - Google provider credentials
 
 ## Later Scope
@@ -233,9 +194,8 @@ Planned for later phases:
 - phone OTP activation
 - forgot password flow
 - richer conflict handling for synced ledger tables
-- chatbot/backend workflows
-- background jobs and notifications beyond local device reminders
+- chatbot and backend workflows
 
 ## Summary
 
-Supabase is now the authentication and user-profile foundation for Finance Ledger, and that authenticated identity also scopes PowerSync. Email and password remain the only active auth method, Google and phone remain visible as upcoming features, and the ledger stays local-first while authenticated sync is introduced carefully behind that same ownership model.
+Supabase is the authentication and user-profile foundation for Finance Ledger Web. The ledger remains local-first in IndexedDB, but authenticated identity and ownership come from Supabase so the product can support session restore, remote continuity, and future multi-device use.

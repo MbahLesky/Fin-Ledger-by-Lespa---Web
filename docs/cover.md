@@ -8,7 +8,7 @@
 | --- | --- |
 | Prepared by | Mbah Lesky |
 | Role | Graphics Designer & Software Engineer |
-| Project type | Mobile application built with Flutter |
+| Project type | Offline-first web application and installable PWA |
 | Product focus | Conversational financial tracking system |
 | Platform direction | Scalable financial management platform |
 | Version | 1.0 |
@@ -20,7 +20,8 @@
 Finance Ledger is a lightweight financial tracking and analytics tool designed to help users record, organize, and understand their income and expenses with minimal friction.
 
 The product is built around two primary entry points:
-- a mobile app for structured interaction
+
+- a web application for structured interaction
 - a WhatsApp chatbot for fast conversational logging
 
 By making financial entry faster and more natural, Finance Ledger encourages users to build a consistent tracking habit and gives them clearer visibility into their financial behavior.
@@ -28,7 +29,7 @@ By making financial entry faster and more natural, Finance Ledger encourages use
 ## Core Objectives
 
 - Simplify financial tracking for everyday users.
-- Enable fast transaction logging through both mobile UI and chat.
+- Enable fast transaction logging through both the web UI and chat.
 - Provide clear, useful summaries and analytics.
 - Encourage consistency through low-friction workflows.
 - Deliver a clean and intuitive user experience.
@@ -40,7 +41,7 @@ By making financial entry faster and more natural, Finance Ledger encourages use
 - Transaction categorization.
 - Daily, weekly, and monthly summaries.
 - Basic analytics and trends.
-- Mobile-first design with room for future web expansion.
+- Offline-capable browser and PWA experience.
 
 ## Confidentiality Notice
 

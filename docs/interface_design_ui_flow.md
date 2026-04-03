@@ -1,10 +1,10 @@
 # Interface Design and UI Flow
 
-*Finance Ledger*
+*Finance Ledger Web*
 
 ## Purpose
 
-This document defines the current mobile UI structure and the primary user flows after Supabase authentication and PowerSync foundation work were introduced.
+This document defines the page structure, responsive behavior, and primary user flows for the Finance Ledger web application.
 
 ## Design Principles
 
@@ -13,73 +13,84 @@ This document defines the current mobile UI structure and the primary user flows
 - safe bulk import and export
 - real empty states instead of demo placeholders
 - clear auth state before entering the ledger
-- one local source of truth for ledger data
-- background sync should never block core entry and transaction flows
+- local-first behavior must not disappear behind sync status
+- responsive layouts for laptop, tablet, and mobile browser widths
 
-## Main Navigation
 
-The primary bottom navigation contains:
+The complementary brand, color, theme, and copy direction now lives in `brand_visual_language.md`.
+
+## Navigation Model
+
+The web application uses route-based navigation.
+
+Primary destinations:
 
 - Dashboard
 - Transactions
-- Add
+- Add Transaction
 - Analytics
-- Profile
+- Settings / Profile
 
-## Screen Definitions
+Responsive behavior:
 
-### Authentication Screens
+- desktop and large tablet layouts use a persistent sidebar or top navigation
+- compact widths use a bottom navigation or condensed header actions
+- the Add Transaction action remains prominent regardless of layout
 
-**Auth Loading / Session Restore Screen**
+## Page Definitions
 
-- shown at app start while the session is checked
+### Authentication Pages
+
+**Auth Loading / Session Restore View**
+
+- shown at app start while the browser session is checked
 - displays a loading state such as `Restoring your session...`
 - routes to signed-out, profile-completion, onboarding, or main-app flow
 
-**Login Screen**
+**Login Page**
 
 - email input
 - password input
 - login button
-- Google sign-in button remains visible and shows a coming-soon snackbar when tapped
-- phone sign-in entry point remains visible and routes into the phone screen
+- Google sign-in button remains visible and shows a coming-soon message when tapped
+- phone sign-in entry point remains visible and routes into the phone page
 - register link
 - auth-unavailable guidance when Supabase config is missing
 
-**Register Screen**
+**Register Page**
 
 - full name input
 - email input
 - password input
 - confirm password input
 - register button
-- Google sign-up button remains visible and shows a coming-soon snackbar when tapped
-- phone sign-up entry point remains visible and routes into the phone screen
+- Google sign-up button remains visible and shows a coming-soon message when tapped
+- phone sign-up entry point remains visible and routes into the phone page
 - guidance about email confirmation when required by Supabase
 
-**Phone Auth Screen**
+**Phone Auth Page**
 
 - phone number input
 - full name input for sign-up mode
 - send verification action
 - validation guidance for international phone format
-- submit action currently shows a coming-soon snackbar instead of starting OTP delivery
+- submit action currently shows a coming-soon message instead of starting OTP delivery
 
-**OTP Verification Screen**
+**OTP Verification Page**
 
-- not active in this phase
+- not active in the current web phase
 - reserved for a later phone-auth milestone
 
-**Profile Completion Screen**
+**Profile Completion Page**
 
 - shown when authentication succeeds but the app profile is missing required fields
 - editable name field
 - editable phone field
 - save and continue action
 
-### Onboarding Screens
+### Onboarding Pages
 
-**Choose Your Currency Screen**
+**Choose Your Currency Page**
 
 - title: `Choose Your Currency`
 - selectable currency list
@@ -87,10 +98,10 @@ The primary bottom navigation contains:
 - `Import existing records` action
 - selected currency is saved before the user continues into either setup path
 
-**Import Existing Records Screen**
+**Import Existing Records Page**
 
 - available during onboarding before opening balances are finalized
-- local CSV file picker
+- browser file picker
 - CSV format guidance
 - parsed row preview
 - validation issues section
@@ -100,7 +111,7 @@ The primary bottom navigation contains:
 - import result summary
 - `Continue setup` action after a successful import
 
-**Set Starting Balances Screen**
+**Set Starting Balances Page**
 
 - title: `Set Your Starting Balances`
 - always shows Cash and Bank
@@ -109,20 +120,21 @@ The primary bottom navigation contains:
 - skip or continue action
 - balances are treated as opening balances, not transactions
 
-**Daily Reminder Screen**
+**Daily Reminder Page**
 
 - title: `Stay on Track`
 - reminder toggle
 - time picker when enabled
+- browser notification permission guidance
 - skip or continue action to finish onboarding
 
-### Dashboard Screen
+### Dashboard Page
 
-**Purpose**
+Purpose:
 
 - give a quick view of current balance, totals, accounts, and recent activity
 
-**Sections**
+Sections:
 
 - current balance
 - total income
@@ -131,70 +143,77 @@ The primary bottom navigation contains:
 - account summary
 - quick actions such as add transaction, history, analytics, and import data
 - recent transactions
+- sync status banner when there are pending or failed writes
 
-**Empty-state behavior**
+Empty-state behavior:
 
 - shows zero balance correctly
-- keeps default/custom accounts visible
+- keeps default and custom accounts visible
 - prompts the user to import data or add the first transaction
 
-### Transactions Screen
+### Transactions Page
 
-**Purpose**
+Purpose:
 
 - show searchable and filterable transaction history
 
-**Elements**
+Elements:
 
 - search
 - type filter
 - category filter
 - account filter
 - date filter
-- transaction list
+- transaction list or table
 
-**Actions**
+Actions:
 
-- tap for details
-- long press to edit
-- swipe to delete
+- open detail panel or page
+- edit from row actions
+- delete with confirmation
 
-**Empty-state behavior**
+Empty-state behavior:
 
 - explains that the user can add the first transaction or import a CSV
 
-### Add Transaction Screen
+### Add Transaction View
 
-**Purpose**
+Purpose:
 
 - support fast manual entry for income and expense records
 
-**Layout**
+Presentation options:
+
+- modal or drawer on desktop
+- full page or sheet on smaller screens
+
+Layout:
 
 - amount input
-- income/expense toggle
+- income or expense toggle
 - category selector
 - account selector
 - note field
 - date selector
 - save action
 
-### Analytics Screen
+### Analytics Page
 
-**Purpose**
+Purpose:
 
 - show derived trends and breakdowns from stored transactions
 
-**Behavior**
+Behavior:
 
-- works from local data only
-- handles empty data safely with placeholder messaging
+- reads from local data first
+- handles empty data safely
+- adapts chart layout for narrower screens
 
-### Profile / Settings Screen
+### Settings / Profile Page
 
-**Sections**
+Sections:
 
-- authenticated profile/session information
+- authenticated profile and session information
 - currency
 - accounts and opening balances
 - reminders
@@ -205,45 +224,45 @@ The primary bottom navigation contains:
 - reset app data
 - log out
 
-### Import Screen
+### Import Page
 
-**Purpose**
+Purpose:
 
 - import historical finance records from a local CSV file
 
-**MVP flow**
+MVP flow:
 
 1. Choose local CSV file
 2. Parse and validate headers and rows
 3. Show preview and row issues
 4. Match or create accounts and categories
 5. Import valid rows only
-6. Show summary and update dashboard/history/analytics automatically
+6. Show summary and update dashboard, history, and analytics automatically
 
-### Export Screen
+### Export Page
 
-**Purpose**
+Purpose:
 
 - export all locally stored transactions into a CSV backup
 
-**MVP flow**
+MVP flow:
 
-1. Tap export
-2. Generate CSV from Drift transactions
-3. Open platform share/save sheet
+1. Open export page
+2. Generate CSV from locally stored transactions
+3. Download file through the browser
 4. Show success or failure feedback
 
 ## Textual User Flows
 
-- first-time email sign-up: Register -> Supabase auth -> Profile row ensured -> Choose currency -> Start fresh or import -> Starting balances -> Optional reminders -> Dashboard
-- phone sign-up option tapped: Register -> Phone screen -> Enter phone -> Submit -> Coming-soon snackbar -> User returns to email flow for active auth
-- Google sign-in or sign-up option tapped: Login/Register -> Google button -> Coming-soon snackbar -> User stays in auth flow and uses email instead
-- returning user with session: Splash -> Session restore -> Profile check -> Onboarding if incomplete or Dashboard if ready
-- daily use: Open app -> Dashboard -> Add transaction or review history -> Analytics/Profile as needed
-- later manual import: Profile -> Import data -> Choose CSV -> Preview and map -> Confirm import -> Updated ledger
-- export backup: Profile -> Export data -> Generate CSV -> Save/share externally
-- sign out: Profile -> Log out -> Supabase session cleared -> Login screen
-- reset flow: Profile -> Reset app data -> Confirm -> Onboarding restarts with system defaults only
+- first-time email sign-up: Register -> Supabase auth -> profile row ensured -> choose currency -> start fresh or import -> starting balances -> optional reminders -> dashboard
+- phone sign-up option tapped: Register -> Phone page -> enter phone -> submit -> coming-soon message -> user returns to email flow for active auth
+- Google sign-in or sign-up option tapped: Login/Register -> Google button -> coming-soon message -> user stays in auth flow and uses email instead
+- returning user with session: App load -> session restore -> profile check -> onboarding if incomplete or dashboard if ready
+- daily use: Open app or installed PWA -> dashboard -> add transaction or review history -> analytics/settings as needed
+- later manual import: Settings -> Import data -> choose CSV -> preview and map -> confirm import -> updated ledger
+- export backup: Settings -> Export data -> generate CSV -> download file
+- sign out: Settings -> Log out -> Supabase session cleared -> login page
+- reset flow: Settings -> Reset app data -> confirm -> onboarding restarts with system defaults only
 
 ## UX Considerations
 
@@ -254,20 +273,20 @@ The primary bottom navigation contains:
 - auth states should always show progress and clear recovery messaging
 - onboarding should happen only after the user has a real authenticated identity
 - profile completion should be brief and only shown when required
-- guarded auth methods should stay visible without leading into broken flows
-- PowerSync should stay a background concern in this phase rather than a prominent new screen flow
+- sync should remain a background system until the user needs retry or status visibility
+- desktop layouts may show more data density, but the feature flow must match the mobile-width experience
 
 ## Future Extensions
 
 - replace-all import mode with stronger confirmation
 - filtered export by account or date range
-- JSON/XLSX support
+- JSON or XLSX support
 - Google sign-in activation
 - phone OTP activation
 - forgot password flow
-- richer visible sync status once multi-device behavior is polished
+- richer visible sync history and conflict resolution
 - richer account profile editing after backend growth
 
 ## Summary
 
-The UI flow now starts with real authentication, then moves into profile completion and onboarding only when needed. After that, users manage their finances in the same local-first ledger experience as before.
+The interface flow still starts with authentication, profile completion, and onboarding, then moves into the same ledger, analytics, settings, and portability flows already defined for Finance Ledger. The difference is that those experiences are now delivered as responsive web pages and PWA views across screen sizes.

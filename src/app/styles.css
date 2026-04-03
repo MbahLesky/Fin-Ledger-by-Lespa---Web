@@ -1,0 +1,136 @@
+@import url("https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 214 50% 97%;
+  --foreground: 218 36% 15%;
+  --card: 0 0% 100%;
+  --card-foreground: 218 36% 15%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 218 36% 15%;
+  --surface: 0 0% 100%;
+  --surface-elevated: 214 36% 99%;
+  --surface-tint: 213 43% 96%;
+  --primary: 218 68% 29%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 176 81% 30%;
+  --secondary-foreground: 0 0% 100%;
+  --accent: 10 71% 59%;
+  --accent-foreground: 0 0% 100%;
+  --muted: 214 34% 94%;
+  --muted-foreground: 217 18% 44%;
+  --border: 214 26% 87%;
+  --input: 214 35% 92%;
+  --ring: 218 68% 29%;
+  --success: 176 81% 30%;
+  --success-foreground: 0 0% 100%;
+  --warning: 36 93% 53%;
+  --warning-foreground: 23 77% 12%;
+  --danger: 10 71% 59%;
+  --danger-foreground: 0 0% 100%;
+  --radius-xl: 1.75rem;
+  --radius-lg: 1.25rem;
+  --radius-md: 1rem;
+  --radius-sm: 0.75rem;
+}
+
+.dark {
+  --background: 214 59% 8%;
+  --foreground: 213 30% 96%;
+  --card: 217 50% 12%;
+  --card-foreground: 213 30% 96%;
+  --popover: 217 50% 12%;
+  --popover-foreground: 213 30% 96%;
+  --surface: 217 50% 12%;
+  --surface-elevated: 216 45% 15%;
+  --surface-tint: 217 44% 18%;
+  --primary: 218 63% 58%;
+  --primary-foreground: 214 59% 8%;
+  --secondary: 176 63% 42%;
+  --secondary-foreground: 214 59% 8%;
+  --accent: 10 80% 65%;
+  --accent-foreground: 214 59% 8%;
+  --muted: 217 32% 18%;
+  --muted-foreground: 214 18% 72%;
+  --border: 217 27% 24%;
+  --input: 217 26% 20%;
+  --ring: 218 63% 58%;
+  --success: 176 63% 42%;
+  --success-foreground: 214 59% 8%;
+  --warning: 36 93% 53%;
+  --warning-foreground: 214 59% 8%;
+  --danger: 10 80% 65%;
+  --danger-foreground: 214 59% 8%;
+}
+
+* {
+  border-color: hsl(var(--border));
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-family: "Poppins", ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-image:
+    radial-gradient(circle at top, rgba(23, 59, 122, 0.12), transparent 32%),
+    linear-gradient(180deg, rgba(243, 246, 251, 0.92), rgba(243, 246, 251, 1));
+}
+
+.dark body {
+  background-image:
+    radial-gradient(circle at top, rgba(15, 140, 131, 0.12), transparent 32%),
+    linear-gradient(180deg, rgba(8, 17, 31, 0.98), rgba(8, 17, 31, 1));
+}
+
+h1,
+h2,
+h3,
+h4 {
+  color: hsl(var(--foreground));
+  letter-spacing: -0.03em;
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px hsl(var(--ring) / 0.35),
+    0 0 0 4px hsl(var(--background));
+}
+
+.page-grid {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.glass-surface {
+  border-radius: var(--radius-xl);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(12px);
+}
+
+.dark .glass-surface {
+  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(16, 28, 47, 0.8);
+}
+
+@media (min-width: 1280px) {
+  .page-grid {
+    gap: 1.75rem;
+  }
+}

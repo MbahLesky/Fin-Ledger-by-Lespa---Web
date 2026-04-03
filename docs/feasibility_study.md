@@ -11,41 +11,44 @@ This document evaluates the feasibility of developing Finance Ledger from techni
 ### Overview
 
 The proposed solution includes:
-- a Flutter mobile application
-- a WhatsApp chatbot as a primary input channel
-- a backend API and database as the system core
+
+- a React + TypeScript web application
+- installable PWA behavior for offline-capable usage
+- a WhatsApp chatbot as a primary conversational input channel
+- a backend and database core through Supabase
 
 ### Assessment
 
-- Flutter is suitable for cross-platform mobile development.
-- The required UI, charts, and state-management patterns are standard.
-- The backend can be implemented using modern services such as Supabase, Firebase, or a custom Node.js API.
+- React, TypeScript, and Vite are suitable for a responsive browser-based finance application.
+- Tailwind CSS, shadcn/ui, and Recharts cover the UI and analytics needs of the MVP.
+- Dexie and IndexedDB support the required offline-first behavior.
+- Supabase is suitable for authentication, PostgreSQL data storage, and ownership-aware backend access.
 - The chatbot is feasible through the WhatsApp Business API or providers such as Twilio.
 
 ### Technical Risks
 
-- Chatbot input ambiguity across different message styles.
-- Dependence on WhatsApp API limitations and pricing.
-- Real-time synchronization between chatbot and app clients.
+- chatbot input ambiguity across different message styles
+- browser differences in offline caching and notification behavior
+- sync conflicts when the same records are changed across reconnect scenarios
 
 ### Conclusion
 
-The project is technically feasible with moderate complexity, with the chatbot and backend design being the main engineering risks.
+The project is technically feasible with moderate complexity, with offline sync behavior and chatbot design being the main engineering risks.
 
 ## Financial Feasibility
 
 ### Expected Cost Areas
 
-- Development time and effort.
-- Backend hosting.
-- Database storage.
-- WhatsApp API usage.
+- development time and effort
+- hosting and deployment
+- database storage
+- WhatsApp API usage
 
 ### Assessment
 
-- MVP costs can remain low by using free or low-cost infrastructure tiers.
-- WhatsApp messaging costs are likely to become the most important recurring expense.
-- Infrastructure cost will grow gradually as the user base scales.
+- MVP costs can remain low by using free or low-cost infrastructure tiers
+- WhatsApp messaging costs are likely to become the most important recurring expense
+- infrastructure cost will grow gradually as the user base scales
 
 ### Conclusion
 
@@ -55,15 +58,15 @@ Finance Ledger is financially feasible for an MVP with relatively low initial in
 
 ### Strengths
 
-- WhatsApp familiarity lowers the learning curve.
-- A lightweight app experience increases usability.
-- Fast interaction encourages repeated use.
+- browser access lowers installation friction
+- PWA support keeps the app close to a native-feeling workflow
+- fast interaction encourages repeated use
 
 ### Operational Challenges
 
-- Keeping chatbot responses accurate and reliable.
-- Maintaining uptime and performance.
-- Handling user errors during entry and import.
+- keeping chatbot responses accurate and reliable
+- maintaining offline and reconnect behavior cleanly
+- handling user errors during entry and import
 
 ### Conclusion
 
@@ -87,4 +90,4 @@ The project is schedule-feasible for an MVP if scope is controlled and delivery 
 
 ## Final Assessment
 
-Finance Ledger is feasible overall. The best path forward is a phased, prototype-first delivery strategy that validates the user experience before investing in deeper integrations and automation.
+Finance Ledger is feasible overall. The best path forward is a phased delivery strategy that validates the web experience, offline behavior, and chatbot value before investing in deeper integrations and automation.

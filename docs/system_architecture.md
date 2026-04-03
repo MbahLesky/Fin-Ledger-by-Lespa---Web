@@ -1,110 +1,122 @@
 # System Architecture
 
-*Finance Ledger - Local-First Ledger with PowerSync and Supabase*
+*Finance Ledger - Offline-First Web Architecture*
 
 ## Purpose
 
-This document describes the architecture currently implemented in the mobile app after PowerSync was introduced on March 27, 2026.
+This document defines the target architecture for Finance Ledger as a web application while preserving the same finance-tracking product scope already established for the project.
 
-## Current Architectural Reality
+## Architectural Reality
 
-Finance Ledger is a **local-first Flutter application** with a sync-aware data layer.
+Finance Ledger is now documented as an **offline-capable web application** with a local-first data pipeline.
 
-The app now uses:
+The web stack uses:
 
-- Flutter for UI
-- Riverpod for application state and orchestration
-- Drift for local business data persistence
-- SQLite on-device storage
-- PowerSync as the sync layer over the same SQLite database
+- React + TypeScript + Vite for the application shell
+- Tailwind CSS and shadcn/ui for the interface layer
+- React Router for page routing
+- Zustand for application-facing state orchestration
+- Dexie + IndexedDB for local business data persistence
 - Supabase Auth for identity and session management
-- Supabase `public.profiles` for app-level user profiles
-- device services for notifications
+- Supabase PostgreSQL for remote profile and ledger storage
+- Recharts for dashboard and analytics visualization
+- service worker + web manifest for PWA installability and offline shell caching
 
-Ledger data remains readable and writable locally first. When `POWERSYNC_URL` is configured and the user is authenticated, PowerSync can synchronize selected business tables with Supabase/Postgres.
+## Core Runtime Principle
 
-## Current Runtime Flow
+Finance Ledger uses **local write first, cloud sync second** behavior.
 
-Ledger and sync flow:
+Core finance actions should follow this path:
 
 ```text
-Flutter UI
--> Riverpod application state
--> Drift DAOs
--> SQLite local database
--> PowerSync sync layer
--> Supabase / Postgres
+React UI
+-> feature action / form validation
+-> Dexie local database
+-> sync queue / outbox
+-> sync engine
+-> Supabase / PostgreSQL
 ```
 
-Auth and profile flow:
+This means:
+
+- user-facing CRUD does not wait on a network round trip
+- dashboard and analytics read from local source data
+- offline use remains available for core finance flows
+- cloud sync restores continuity when connectivity returns
+
+## High-Level Flows
+
+### Ledger and Sync Flow
 
 ```text
-Flutter UI
--> Riverpod auth/session providers
+React pages and components
+-> Zustand stores and feature services
+-> Dexie repositories
+-> IndexedDB local tables
+-> sync outbox and pull checkpoints
+-> Supabase Postgres
+```
+
+### Auth and Profile Flow
+
+```text
+React auth pages
 -> Supabase Auth
 -> Supabase public.profiles
+-> session-aware route guards
 ```
 
-Reminder scheduling flow:
+### Offline Shell Flow
 
 ```text
-Riverpod settings flow
--> Drift notification preference persistence
--> LocalNotificationService
--> device notification scheduler
+PWA manifest
+-> service worker caches app shell and static assets
+-> browser loads cached shell offline
+-> app reconnects and sync resumes when network returns
 ```
-
-## Architectural Direction
-
-The app now actively uses the PowerSync-ready version of the local architecture instead of only planning for it.
-
-Important boundary:
-
-- `public.profiles` remains a direct Supabase auth/profile concern in this phase
-- syncable ledger and preference tables are managed through Drift plus PowerSync
 
 ## Architecture Layers
 
 ### Presentation Layer
 
-- Flutter screens and widgets
-- auth, onboarding, dashboard, transactions, analytics, and settings flows
-- no direct database or Supabase calls from widgets
+- React pages, layouts, and dialogs
+- shadcn/ui component primitives
+- responsive navigation for desktop and mobile browser widths
+- no direct Supabase or IndexedDB calls from leaf components
 
 ### Application Layer
 
-- Riverpod providers
-- Riverpod notifiers/controllers
-- session-aware routing
-- onboarding, import/export, and settings orchestration
+- React Hook Form + Zod for validated input boundaries
+- Zustand stores for session, UI state, filters, and orchestrated workflows
+- route guards for signed-out, profile-completion, onboarding, and main-app states
+- feature services coordinating reads, writes, and sync-aware side effects
 
-### Data Access Layer
+### Data Layer
 
-- Drift database and DAOs for local ledger data
-- PowerSync database connection and auth-aware sync lifecycle
-- Supabase auth/profile services for identity and app-level user records
-- bootstrap and workspace ownership coordination
+- Dexie schemas and repositories for local business data
+- sync engine for outbox processing, remote pulls, and reconciliation
+- Supabase client wrappers for auth, profile, and remote persistence operations
 
 ### Storage Layer
 
-- SQLite on-device storage for ledger and app state
-- PowerSync metadata and upload queue in the same SQLite database
-- Supabase Auth session storage
-- Supabase `public.profiles` for remote user profile data
+- IndexedDB for local source data and sync metadata
+- browser cache storage for shell assets
+- Supabase PostgreSQL for authenticated remote continuity
+- Supabase Auth session storage in the browser
 
 ## Main Components
 
-| Component | Current Responsibility |
+| Component | Responsibility |
 | --- | --- |
-| Flutter UI | Render screens and capture user actions |
-| Riverpod State Layer | Expose app-facing state and coordinate writes |
-| GoRouter + session providers | Route between signed-out, profile-completion, onboarding, and main-app states |
-| Drift Database | Persist local accounts, categories, transactions, settings, and local history |
-| PowerSync Layer | Track local mutations, download remote changes, and keep synced tables ready for multi-device use |
-| Supabase Auth Service | Sign up, sign in, sign out, restore session, and preserve future OAuth / OTP integration points |
-| Profile Service | Create, read, and update the app-level `profiles` row |
-| Local Notification Service | Schedule and cancel device reminders |
-| Bootstrap Layer | Initialize first-run defaults, reset local data safely, and claim local ownership for the authenticated user |
+| React UI | Render pages, forms, tables, charts, and empty states |
+| Route Guards | Direct users through signed-out, profile completion, onboarding, and main app states |
+| Zustand Stores | Expose app-facing state and coordinate workflows without making UI components own data rules |
+| Dexie Database | Persist accounts, categories, transactions, settings, reminders, import/export history, and sync metadata locally |
+| Sync Engine | Queue local mutations, push pending changes, pull remote changes, and update sync status |
+| Supabase Auth Service | Sign up, sign in, sign out, and restore browser sessions |
+| Profile Service | Create, read, and update `public.profiles` |
+| PWA Shell | Cache static assets and allow installable browser usage |
+| Reminder Service | Persist reminder preferences and trigger browser notification flows or in-app reminder fallbacks |
 
 ## Data Ownership Model
 
@@ -116,93 +128,99 @@ Important boundary:
 - settings
 - notification preferences
 
-These records stay local-first in runtime behavior, but they are now also PowerSync-managed for synchronization when configured.
+These records are readable and writable offline in IndexedDB and are the runtime source of truth for the UI.
 
 ### Remote Identity and Profile Data
 
 - `auth.users` managed by Supabase Auth
 - `public.profiles` managed by Finance Ledger application logic
 
-`auth.users` is the identity source.
-`public.profiles` is the app-level user record.
+### Remote Ledger Continuity Data
+
+- `accounts`
+- `categories`
+- `transactions`
+- `settings`
+- `notification_preferences`
+
+These tables mirror syncable business records for authenticated cloud continuity and multi-device use.
 
 ### Local-Only Operational Data
 
-- import history
-- export history
+- import records
+- export records
+- sync error logs
+- outbox entries
 
 ### Derived Data
 
-- dashboard summary
-- analytics summary
-- current balances
-- filter results
+- dashboard totals
+- analytics summaries
+- account balances
+- recent activity
+
+Derived data is computed from transactions and related entities, not stored as canonical source tables.
+
+## Offline-First Behavior
+
+The web app must remain useful when the browser loses connectivity.
+
+Required behavior:
+
+- cached app shell loads after the first successful visit
+- local finance data remains available from IndexedDB
+- create, edit, and delete operations write locally even when offline
+- pending writes are marked for later sync
+- sync resumes automatically or on user-triggered retry when connectivity returns
+
+## Conflict and Failure Handling
+
+MVP conflict policy:
+
+- row ownership is scoped by authenticated `user_id`
+- soft deletes use `deleted_at` rather than immediate hard deletes
+- records carry `updated_at` and sync timestamps
+- last-write-wins by trusted timestamp is the default row-level conflict rule for MVP
+- rejected writes remain in a failed state locally with retry guidance instead of being discarded silently
+
+## Reminder Architecture Note
+
+The reminder feature remains part of the product, but browser platforms vary in background notification support.
+
+Finance Ledger therefore documents reminders as:
+
+- persisted reminder preferences in Dexie and Supabase
+- browser notification permissions where supported
+- installable PWA behavior for the best desktop-like experience
+- in-app reminder prompts as a fallback when background delivery is limited
 
 ## Why This Architecture Fits the Product
 
-- It keeps the ledger usable offline today.
-- It adds real authentication without forcing sync too early.
-- It keeps widgets thin and provider-driven.
-- It preserves Drift as the local source of truth for business data.
-- It creates a clean path to ownership-aware sync later.
-- It supports safe CSV portability without backend coupling.
-
-## Current Auth and Workspace Boundary
-
-Authentication is now real, but sync is still not implemented.
-
-Because of that:
-
-- the first authenticated user on a device can claim the existing local workspace
-- newly created local business records are stamped with that authenticated user id
-- if a different user signs in on the same device before sync exists, the local workspace is reset to prevent cross-account leakage
-
-This is a deliberate safety rule for the current phase.
-
-## Integration Boundaries
-
-### Active PowerSync Boundary
-
-- observe syncable raw tables on the local SQLite database
-- keep Drift as the read/write API used by the rest of the app
-- connect only when the user is authenticated and PowerSync is configured
-- disconnect safely on sign out
-
-### Active Supabase Backend Boundary
-
-- Supabase Auth owns identity
-- `public.profiles` owns app-level profile data
-- remote ledger tables own synced business records with `user_id` ownership
-- RLS protects remote business rows per authenticated user
+- It preserves the original local-first finance workflow.
+- It keeps the app usable in weak or absent connectivity.
+- It maps cleanly to a web and PWA delivery model.
+- It avoids blocking transaction entry on backend availability.
+- It keeps backend and sync logic outside page components.
+- It creates a practical path to multi-device continuity without changing the finance domain model.
 
 ## Phase Scope Clarification
 
-Implemented now:
+Documented now:
 
-- local persistence with Drift
-- schema versioning and migrations
-- Supabase initialization through environment-based configuration
-- email/password auth
-- Google and phone auth entry points shown as upcoming features
-- session restore on launch
-- app-level profile storage in `public.profiles`
-- session-aware routing
-- local workspace ownership stamping
-- PowerSync client integration on the same SQLite database
-- auth-aware PowerSync connection management
-- sync-ready remote ledger table migrations for Supabase/Postgres
-- clear syncable versus local-only table boundaries
+- offline-first web architecture
+- installable PWA shell
+- Dexie-based local data storage
+- Supabase Auth and `public.profiles`
+- authenticated sync foundation for business tables
+- responsive browser-based pages and views
 
-Not implemented now:
+Planned later:
 
-- phone OTP auth
-- Google OAuth auth
-- forgot password flow
-- full conflict-resolution UX
-- complete operational PowerSync Cloud setup from inside the Flutter app
-- chatbot/backend workflows
-- service-role usage in the Flutter client
+- richer sync conflict UX
+- deeper chatbot/backend workflows
+- advanced server-side automation
+- broader notification delivery beyond browser constraints
 
 ## Summary
 
-Finance Ledger now runs as a local-first mobile architecture with real Supabase auth, real remote profile ownership, and an active PowerSync sync foundation. Drift remains the app-facing data layer, while PowerSync and Supabase now provide the path to authenticated multi-device continuity.
+Finance Ledger is now documented as a React-based, offline-capable web application. The architecture centers the browser as the primary client, IndexedDB as the immediate source of truth, and Supabase as the authenticated cloud backend that receives synchronized changes after local writes succeed.

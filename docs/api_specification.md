@@ -1,24 +1,20 @@
 # API Specification
 
-*Finance Ledger - Active Supabase Auth and PowerSync Backend Contract*
+*Finance Ledger - Web Client and Supabase Contract*
 
 ## Purpose
 
-This document records the backend-facing contract that exists today and the larger backend surface that remains for later phases.
+This document records the backend-facing contract for the Finance Ledger web application and the larger backend surface reserved for later phases.
 
 ## Current Backend Scope
 
-Current date context: **March 27, 2026**.
-
 Active now:
 
-- Supabase project initialization in Flutter
 - Supabase Auth for email/password
-- Supabase session restore on app launch
-- Supabase `public.profiles` reads and upserts through the Flutter client
-- PowerSync client integration in Flutter
-- auth-aware PowerSync connection management
-- remote ledger table migrations for synced business data
+- browser session restore
+- Supabase `public.profiles` reads and upserts through the web client
+- remote Postgres tables for synced ledger entities
+- sync engine push and pull operations using the authenticated web client
 
 Not active yet:
 
@@ -26,39 +22,38 @@ Not active yet:
 - phone OTP authentication
 - forgot password flow
 - custom REST endpoints
-- chatbot/backend APIs
-- final conflict-handling UX
+- chatbot and webhook APIs
+- advanced conflict-resolution UX
 
 ## Runtime Configuration
 
-The Flutter client reads backend configuration from Dart defines:
+The web client reads backend configuration from Vite environment variables:
 
-- `SUPABASE_URL`
-- `SUPABASE_PUBLISHABLE_KEY`
-- `POWERSYNC_URL`
-- optional `APP_ENV`
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_ANON_KEY`
+- optional `VITE_APP_ENV`
 
 Important rule:
 
-- only the publishable/anon key is used in the mobile client
-- service-role keys are out of scope and must not be shipped in the app
+- only the publishable anon key is used in the browser client
+- service-role keys are out of scope and must never ship to the browser
 
 ## Active Authentication Contract
 
-Authentication is currently handled through the Supabase Flutter SDK rather than a custom `/auth/*` REST layer.
+Authentication is handled through the Supabase JavaScript client rather than custom `/auth/*` REST endpoints.
 
 Supported client operations:
 
 - email/password sign up
 - email/password sign in
 - sign out
-- session restore on launch
+- session restore on app load
 
 Visible but intentionally inactive UI options:
 
-- phone sign in / sign up through OTP
+- phone sign in and sign up through OTP
 - OTP verification
-- Google OAuth sign in / sign up
+- Google OAuth sign in and sign up
 
 Expected bearer context:
 
@@ -84,9 +79,9 @@ Current columns:
 
 Current client operations:
 
-- `select` profile by authenticated `id`
-- `upsert` profile after successful authentication
-- `update` profile details after profile completion or app metadata changes
+- select profile by authenticated `id`
+- upsert profile after successful authentication
+- update profile details after profile completion or app metadata changes
 
 RLS rules:
 
@@ -94,29 +89,9 @@ RLS rules:
 - users can insert only their own row
 - users can update only their own row
 
-## Auth and Profile Flow Contract
+## Ledger Sync Contract
 
-Current runtime sequence:
-
-1. Initialize Supabase with the configured project URL and publishable key.
-2. Open the local SQLite database through PowerSync and Drift.
-3. Check for an existing Supabase session.
-4. If authenticated, upsert or fetch `public.profiles`.
-5. If `POWERSYNC_URL` is configured, connect PowerSync using the Supabase JWT.
-6. Route the user to profile completion, onboarding, or the main app.
-
-Failure expectations:
-
-- invalid credentials return clear auth errors
-- missing profile table returns a setup error message
-- disabled Google or phone options return a non-blocking `coming soon` message without faking authentication
-- missing or invalid PowerSync setup must not break local app usage
-
-## Active PowerSync Contract
-
-PowerSync uses the Supabase access token as its client auth credential in this phase.
-
-Current syncable tables:
+Syncable tables:
 
 - `accounts`
 - `categories`
@@ -124,17 +99,47 @@ Current syncable tables:
 - `settings`
 - `notification_preferences`
 
-Current behavior:
+Client behavior:
 
-- Drift remains the app-facing read/write layer
-- PowerSync tracks local changes from the same SQLite database
-- uploads are applied through a dedicated PowerSync connector using Supabase table upserts/deletes
-- remote rows are protected by RLS on `user_id`
-- if `POWERSYNC_URL` is absent, the app remains local-only
+- local writes succeed in Dexie first
+- each write creates or updates an outbox entry locally
+- the sync engine pushes pending records to Supabase when the browser is online and authenticated
+- the sync engine pulls remote changes and reconciles them into IndexedDB
+- failed remote writes remain visible through local sync metadata
 
-## Ownership Expectations for Local and Future Remote Data
+Recommended remote write shape:
 
-The current app already aligns local business data with authenticated ownership:
+```json
+{
+  "id": "txn_123",
+  "user_id": "auth-user-uuid",
+  "amount": 5000,
+  "type": "expense",
+  "updated_at": "2026-03-31T10:00:00Z"
+}
+```
+
+## Auth and Profile Flow Contract
+
+Runtime sequence:
+
+1. Initialize Supabase with the configured project URL and anon key.
+2. Open the local IndexedDB database through Dexie.
+3. Check for an existing Supabase session.
+4. If authenticated, upsert or fetch `public.profiles`.
+5. Start sync only when authentication and connectivity conditions are met.
+6. Route the user to profile completion, onboarding, or the main app.
+
+Failure expectations:
+
+- invalid credentials return clear auth errors
+- missing profile table returns a setup error message
+- disabled Google or phone options return a non-blocking coming-soon message
+- missing sync readiness must not block local finance usage
+
+## Ownership Expectations
+
+The app aligns local business data with authenticated ownership:
 
 - `accounts.user_id`
 - `categories.user_id`
@@ -142,11 +147,11 @@ The current app already aligns local business data with authenticated ownership:
 - `settings.user_id`
 - `notification_preferences.user_id`
 
-That ownership alignment is now shared by both the local data model and the remote synced tables.
+Remote rows must remain protected by RLS on `user_id`.
 
 ## Future Endpoint Direction
 
-When custom backend endpoints are added later, they should align with the current local schema, current ownership rules, and the PowerSync-mediated sync path.
+If custom backend endpoints are added later, they should align with the current schema, ownership rules, and offline-first model.
 
 Planned groups:
 
@@ -203,4 +208,4 @@ Important alignment rules:
 
 ## Summary
 
-Finance Ledger now has a real backend contract for identity, profiles, and syncable ledger tables. Email and password remain the active auth method, `public.profiles` remains the direct auth/profile table, and PowerSync now provides the sync pathway between the existing local-first app and Supabase/Postgres.
+Finance Ledger Web uses Supabase as its live backend contract for identity, profiles, and synced ledger continuity. The browser client remains local-first, but the authenticated Supabase layer provides the remote ownership and persistence boundary that the sync engine targets.

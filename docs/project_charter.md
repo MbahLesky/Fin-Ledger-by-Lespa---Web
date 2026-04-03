@@ -11,12 +11,14 @@ Finance Ledger
 Finance Ledger is designed to provide a simple and efficient way for users to track income and expenses while gaining clear financial insight.
 
 The system reduces friction by supporting two input paths:
-- a mobile application for structured interaction
+
+- a web application for structured interaction
 - a WhatsApp chatbot for natural, fast transaction entry
 
 ## Problem Statement
 
 Many people fail to track finances consistently because:
+
 - data entry is too slow or inconvenient
 - existing financial apps are overly complex
 - quick and accessible input methods are missing
@@ -31,27 +33,28 @@ The result is poor financial visibility and weaker decision-making.
 - Provide clear and simple financial analytics.
 - Improve consistency in financial tracking habits.
 - Deliver a lightweight and user-friendly experience.
-- Build a scalable foundation for future multi-platform access.
+- Build a scalable foundation for browser, PWA, and future connected channels.
 
 ## Project Scope
 
 ### In Scope (MVP)
 
 - Income and expense tracking.
-- Transaction logging through the mobile app.
+- Transaction logging through the web application.
 - Transaction logging through the WhatsApp chatbot.
 - Basic categorization of transactions.
 - Daily, weekly, and monthly financial summaries.
 - Simple analytics such as totals and trends.
 - User account management.
+- Offline-capable browser usage for core finance flows.
 
 ### Out of Scope (MVP)
 
 - Direct payments or money transfers.
 - Banking integrations.
 - Advanced financial forecasting.
-- Multi-currency support.
-- Full web or desktop application support.
+- Full accounting workflows.
+- Server-driven automation beyond the defined sync foundation.
 
 ## Stakeholders
 
@@ -59,14 +62,14 @@ The result is poor financial visibility and weaker decision-making.
 | --- | --- |
 | End users | Track income and expenses |
 | Project owner (Lespa) | Product vision, design, and development |
-| Future web users | Advanced analytics and data management |
-| Platform providers | Messaging and external integration services |
+| Web and PWA users | Use structured finance pages, analytics, and portability features |
+| Platform providers | Messaging, hosting, and backend infrastructure |
 
 ## High-Level Requirements
 
 - A simple and intuitive user interface.
-- Fast transaction entry through app and chatbot.
-- Reliable backend synchronization.
+- Fast transaction entry through web UI and chatbot.
+- Reliable offline-first data behavior.
 - Accurate financial calculations and summaries.
 - Secure user data handling.
 - Scalable architecture for future channels.
@@ -74,11 +77,12 @@ The result is poor financial visibility and weaker decision-making.
 ## Success Criteria
 
 The project is considered successful when:
+
 - users can log transactions in seconds
 - chatbot interaction feels natural and efficient
 - financial summaries are clear and accurate
 - users return consistently to track finances
-- the system performs reliably with minimal errors
+- the system performs reliably with minimal errors online and offline
 
 ## Constraints
 
@@ -90,9 +94,9 @@ The project is considered successful when:
 ## Assumptions
 
 - Users are familiar with messaging platforms such as WhatsApp.
-- Mobile devices are the primary access point.
 - Users prefer quick entry over complex forms.
-- Internet access is available for synchronization.
+- Browser-based access lowers installation friction.
+- Connectivity may be inconsistent, so the app must remain useful offline.
 
 ## High-Level Timeline
 
@@ -101,8 +105,8 @@ The project is considered successful when:
 | Planning | Define goals, scope, and success criteria |
 | Analysis | Gather requirements and validate direction |
 | Design | Finalize architecture, data model, and UI flow |
-| Development | Build mobile, backend, and chatbot capabilities |
-| Testing | Validate flows, calculations, and reliability |
+| Development | Build web, backend, and chatbot capabilities |
+| Testing | Validate flows, calculations, offline behavior, and reliability |
 | Deployment | Release the MVP |
 | Maintenance | Improve quality and add features iteratively |
 

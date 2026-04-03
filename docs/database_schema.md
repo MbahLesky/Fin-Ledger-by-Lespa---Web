@@ -1,40 +1,37 @@
 # Database Schema Specification
 
-*Finance Ledger - Drift Local Schema, PowerSync Raw Tables, and Supabase Remote Tables*
+*Finance Ledger - Local IndexedDB Schema and Supabase PostgreSQL Schema*
 
 ## Purpose
 
-This document defines the current schema boundaries for Finance Ledger after PowerSync was introduced.
+This document defines the data boundaries for Finance Ledger as an offline-first web application.
 
 Goals:
 
-- keep ledger data durable and offline-first through Drift
-- add PowerSync as the sync layer on the same SQLite database
-- add real authenticated identity through Supabase
-- keep source financial data relational and migration-friendly
-- separate local operational history from ownership-ready business data
-- keep summaries derived instead of stored
+- keep ledger data durable and usable offline through IndexedDB
+- preserve the same finance entities and business rules already defined for the product
+- synchronize eligible records to Supabase/PostgreSQL when connectivity is available
+- separate local operational history from syncable business records
+- keep dashboard and analytics views derived instead of stored as canonical summary tables
 
 ## Current Architecture
 
 ```text
-Flutter UI
--> Riverpod state
--> Drift DAOs for ledger data
--> SQLite on device
--> PowerSync sync layer
--> Supabase / Postgres
+React UI
+-> Zustand stores and feature services
+-> Dexie repositories
+-> IndexedDB local tables
+-> sync outbox
+-> Supabase / PostgreSQL
 
-Flutter UI
--> Riverpod auth/profile services
--> Supabase Auth + public.profiles
+React auth pages
+-> Supabase Auth
+-> public.profiles
 ```
-
-`public.profiles` remains part of the direct auth/profile flow.
 
 ## Table Classification
 
-### Local Ownership-Ready Business Tables
+### Local Syncable Business Tables
 
 - `accounts`
 - `categories`
@@ -42,15 +39,16 @@ Flutter UI
 - `settings`
 - `notification_preferences`
 
-### Local-Only Operational Tables
+### Local Operational Tables
 
 - `import_records`
 - `export_records`
+- `sync_operations`
 
 ### Remote Supabase Auth Foundation
 
-- `auth.users` (managed by Supabase)
-- `public.profiles` (managed by Finance Ledger)
+- `auth.users`
+- `public.profiles`
 
 ### Remote Supabase Ledger Tables
 
@@ -60,35 +58,65 @@ Flutter UI
 - `settings`
 - `notification_preferences`
 
+## Local IndexedDB Record Shape
+
+Each syncable local record should include domain fields plus sync metadata.
+
+Common metadata fields:
+
+- `id` TEXT PK
+- `remote_id` TEXT NULL
+- `user_id` TEXT NULL
+- `sync_status` TEXT NOT NULL DEFAULT `pending`
+- `sync_error` TEXT NULL
+- `last_synced_at` DATETIME NULL
+- `created_at` DATETIME NOT NULL
+- `updated_at` DATETIME NOT NULL
+- `deleted_at` DATETIME NULL
+
+`sync_status` values:
+
+- `pending`
+- `synced`
+- `failed`
+
+`remote_id` behavior:
+
+- if the remote table reuses the client-generated `id`, `remote_id` may mirror `id` after the first successful sync
+- if the remote layer assigns a different identifier, `remote_id` stores that mapping explicitly
+
 ## Table Definitions
 
 ### Local: `accounts`
 
 Purpose:
 
-- stores default accounts and user-created accounts
+- stores default accounts and user-created money containers
 
 Key fields:
 
-- `id` TEXT PK
-- `user_id` TEXT NULL
-- `name` TEXT NOT NULL
-- `type` TEXT NOT NULL
-- `initial_balance` REAL NOT NULL DEFAULT `0`
-- `currency_code` TEXT NOT NULL
-- `is_default` BOOLEAN NOT NULL DEFAULT `false`
-- `is_archived` BOOLEAN NOT NULL DEFAULT `false`
-- `display_order` INTEGER NOT NULL DEFAULT `0`
-- `created_at` DATETIME NOT NULL
-- `updated_at` DATETIME NOT NULL
-- `deleted_at` DATETIME NULL
+- `id`
+- `remote_id`
+- `user_id`
+- `name`
+- `type`
+- `initial_balance`
+- `currency_code`
+- `is_default`
+- `is_archived`
+- `display_order`
+- `sync_status`
+- `sync_error`
+- `last_synced_at`
+- `created_at`
+- `updated_at`
+- `deleted_at`
 
 Rules:
 
-- `default-cash` and `default-bank` are controlled defaults
+- `default-cash` and `default-bank` remain controlled defaults
 - current balance is derived from `initial_balance` plus transactions
-- new or reassigned records may be stamped with the authenticated Supabase user id
-- PowerSync syncs this table through a raw-table mapping into the same local SQLite table
+- local writes are immediate, even while offline
 
 ### Local: `categories`
 
@@ -98,23 +126,26 @@ Purpose:
 
 Key fields:
 
-- `id` TEXT PK
-- `user_id` TEXT NULL
-- `name` TEXT NOT NULL
-- `type` TEXT NOT NULL
-- `icon_key` TEXT NULL
-- `color_key` TEXT NULL
-- `is_system` BOOLEAN NOT NULL DEFAULT `false`
-- `is_active` BOOLEAN NOT NULL DEFAULT `true`
-- `created_at` DATETIME NOT NULL
-- `updated_at` DATETIME NOT NULL
-- `deleted_at` DATETIME NULL
+- `id`
+- `remote_id`
+- `user_id`
+- `name`
+- `type`
+- `icon_key`
+- `color_key`
+- `is_system`
+- `is_active`
+- `sync_status`
+- `sync_error`
+- `last_synced_at`
+- `created_at`
+- `updated_at`
+- `deleted_at`
 
 Rules:
 
 - system categories are inserted once during initialization
 - custom categories may be created from category management or CSV import mapping
-- PowerSync syncs this table through a raw-table mapping into the same local SQLite table
 
 ### Local: `transactions`
 
@@ -124,25 +155,28 @@ Purpose:
 
 Key fields:
 
-- `id` TEXT PK
-- `user_id` TEXT NULL
-- `account_id` TEXT NOT NULL FK -> `accounts.id`
-- `category_id` TEXT NOT NULL FK -> `categories.id`
-- `type` TEXT NOT NULL
-- `amount` REAL NOT NULL
-- `note` TEXT NOT NULL DEFAULT `''`
-- `transaction_date` DATETIME NOT NULL
-- `reference` TEXT NULL
-- `created_at` DATETIME NOT NULL
-- `updated_at` DATETIME NOT NULL
-- `deleted_at` DATETIME NULL
+- `id`
+- `remote_id`
+- `user_id`
+- `account_id`
+- `category_id`
+- `type`
+- `amount`
+- `note`
+- `transaction_date`
+- `reference`
+- `sync_status`
+- `sync_error`
+- `last_synced_at`
+- `created_at`
+- `updated_at`
+- `deleted_at`
 
 Rules:
 
 - amount is stored as a positive number
 - `reference` may capture source metadata such as `Imported from records.csv`
-- legacy columns like `source` are no longer part of the current schema
-- PowerSync syncs this table through a raw-table mapping into the same local SQLite table
+- soft delete is preferred so offline and remote reconciliation can remain consistent
 
 ### Local: `settings`
 
@@ -152,19 +186,22 @@ Purpose:
 
 Key fields:
 
-- `id` TEXT PK
-- `user_id` TEXT NULL
-- `currency_code` TEXT NOT NULL
-- `theme_mode` TEXT NOT NULL
-- `onboarding_complete` BOOLEAN NOT NULL DEFAULT `false`
-- `created_at` DATETIME NOT NULL
-- `updated_at` DATETIME NOT NULL
+- `id`
+- `remote_id`
+- `user_id`
+- `currency_code`
+- `theme_mode`
+- `onboarding_complete`
+- `sync_status`
+- `sync_error`
+- `last_synced_at`
+- `created_at`
+- `updated_at`
 
 Rules:
 
-- one canonical row is maintained
-- the authenticated user id may be attached for future ownership alignment
-- remote sync uses the same local `id` but pairs it with `user_id` in Postgres to avoid cross-user collisions
+- one canonical settings row is maintained per local workspace
+- remote sync pairs the row with authenticated ownership
 
 ### Local: `notification_preferences`
 
@@ -174,31 +211,40 @@ Purpose:
 
 Key fields:
 
-- `id` TEXT PK
-- `user_id` TEXT NULL
-- `enabled` BOOLEAN NOT NULL DEFAULT `false`
-- `reminder_time` TEXT NULL
-- `timing_mode` TEXT NOT NULL
-- `created_at` DATETIME NOT NULL
-- `updated_at` DATETIME NOT NULL
+- `id`
+- `remote_id`
+- `user_id`
+- `enabled`
+- `reminder_time`
+- `timing_mode`
+- `sync_status`
+- `sync_error`
+- `last_synced_at`
+- `created_at`
+- `updated_at`
+
+Rules:
+
+- the record stores preference state, not delivery guarantees
+- browser-specific delivery constraints are handled at the service layer
 
 ### Local: `import_records`
 
 Purpose:
 
-- keeps a local history of CSV import attempts that were confirmed by the user
+- keeps a local history of CSV import attempts confirmed by the user
 
 Key fields:
 
-- `id` TEXT PK
-- `file_name` TEXT NOT NULL
-- `format` TEXT NOT NULL
-- `total_records` INTEGER NOT NULL
-- `successful_records` INTEGER NOT NULL
-- `failed_records` INTEGER NOT NULL
-- `status` TEXT NOT NULL
-- `error_summary` TEXT NOT NULL DEFAULT `''`
-- `created_at` DATETIME NOT NULL
+- `id`
+- `file_name`
+- `format`
+- `total_records`
+- `successful_records`
+- `failed_records`
+- `status`
+- `error_summary`
+- `created_at`
 
 Rules:
 
@@ -213,17 +259,42 @@ Purpose:
 
 Key fields:
 
-- `id` TEXT PK
-- `format` TEXT NOT NULL
-- `record_count` INTEGER NOT NULL
-- `filters_applied` TEXT NOT NULL
-- `file_name` TEXT NOT NULL
-- `created_at` DATETIME NOT NULL
+- `id`
+- `format`
+- `record_count`
+- `filters_applied`
+- `file_name`
+- `created_at`
 
 Rules:
 
 - local-only
 - not a source financial record
+
+### Local: `sync_operations`
+
+Purpose:
+
+- records outbox entries, pull checkpoints, and sync failures for the browser client
+
+Key fields:
+
+- `id`
+- `entity_name`
+- `entity_id`
+- `operation`
+- `status`
+- `payload`
+- `error_message`
+- `retry_count`
+- `last_attempted_at`
+- `created_at`
+- `updated_at`
+
+Rules:
+
+- used by the sync engine, not by reporting
+- remains local-only operational state
 
 ### Remote: `public.profiles`
 
@@ -233,49 +304,103 @@ Purpose:
 
 Key fields:
 
-- `id` UUID PK FK -> `auth.users.id`
-- `name` TEXT NULL
-- `email` TEXT NULL
-- `phone_number` TEXT NULL
-- `avatar_url` TEXT NULL
-- `onboarding_completed` BOOLEAN NOT NULL DEFAULT `false`
-- `preferred_currency` TEXT NULL
-- `created_at` TIMESTAMPTZ NOT NULL
-- `updated_at` TIMESTAMPTZ NOT NULL
+- `id UUID PRIMARY KEY`
+- `name TEXT NULL`
+- `email TEXT NULL`
+- `phone_number TEXT NULL`
+- `avatar_url TEXT NULL`
+- `onboarding_completed BOOLEAN NOT NULL DEFAULT false`
+- `preferred_currency TEXT NULL`
+- `created_at TIMESTAMPTZ NOT NULL`
+- `updated_at TIMESTAMPTZ NOT NULL`
 
 Rules:
 
 - one row per authenticated Supabase user
-- created or updated after successful authenticated email/password entry in this phase
-- protected by RLS so a user can only access their own row
-- email is expected for the current email/password flow, while `phone_number` may remain null until later profile edits or future auth methods are enabled
+- protected by RLS so a user can access only their own row
 
-### Remote: `auth.users`
+### Remote: `accounts`
 
 Purpose:
 
-- system-managed Supabase identity table
+- stores synced account records for authenticated continuity
+
+Key fields:
+
+- `id TEXT NOT NULL`
+- `user_id UUID NOT NULL`
+- `name TEXT NOT NULL`
+- `type TEXT NOT NULL`
+- `initial_balance NUMERIC NOT NULL DEFAULT 0`
+- `currency_code TEXT NOT NULL`
+- `is_default BOOLEAN NOT NULL DEFAULT false`
+- `is_archived BOOLEAN NOT NULL DEFAULT false`
+- `display_order INTEGER NOT NULL DEFAULT 0`
+- `created_at TIMESTAMPTZ NOT NULL`
+- `updated_at TIMESTAMPTZ NOT NULL`
+- `deleted_at TIMESTAMPTZ NULL`
 
 Rules:
 
-- not owned by Finance Ledger migration code except through Supabase Auth flows
-- source of the authenticated user UUID used by `public.profiles.id` and future remote ownership rules
+- unique identity should be enforced by `(user_id, id)`
+- seeded IDs such as `default-cash` and `default-bank` remain safe because ownership scopes them per user
 
-## Remote Ledger Table Notes
+### Remote: `categories`
 
-Remote ledger tables preserve the existing local IDs instead of forcing a full local ID rewrite.
+Key fields:
 
-Because some local IDs are intentionally stable constants such as:
+- `id TEXT NOT NULL`
+- `user_id UUID NOT NULL`
+- `name TEXT NOT NULL`
+- `type TEXT NOT NULL`
+- `icon_key TEXT NULL`
+- `color_key TEXT NULL`
+- `is_system BOOLEAN NOT NULL DEFAULT false`
+- `is_active BOOLEAN NOT NULL DEFAULT true`
+- `created_at TIMESTAMPTZ NOT NULL`
+- `updated_at TIMESTAMPTZ NOT NULL`
+- `deleted_at TIMESTAMPTZ NULL`
 
-- `default-cash`
-- `default-bank`
-- `app-settings-primary`
+### Remote: `transactions`
 
-the remote business tables use user-scoped ownership as part of the row identity:
+Key fields:
 
-- composite remote identity: `(user_id, id)`
-- PowerSync sync streams still expose the existing local `id` value back to the client
-- this keeps the local app behavior stable while avoiding cross-user collisions in Supabase
+- `id TEXT NOT NULL`
+- `user_id UUID NOT NULL`
+- `account_id TEXT NOT NULL`
+- `category_id TEXT NOT NULL`
+- `type TEXT NOT NULL`
+- `amount NUMERIC NOT NULL`
+- `note TEXT NOT NULL DEFAULT ''`
+- `transaction_date TIMESTAMPTZ NOT NULL`
+- `reference TEXT NULL`
+- `created_at TIMESTAMPTZ NOT NULL`
+- `updated_at TIMESTAMPTZ NOT NULL`
+- `deleted_at TIMESTAMPTZ NULL`
+
+### Remote: `settings`
+
+Key fields:
+
+- `id TEXT NOT NULL`
+- `user_id UUID NOT NULL`
+- `currency_code TEXT NOT NULL`
+- `theme_mode TEXT NOT NULL`
+- `onboarding_complete BOOLEAN NOT NULL DEFAULT false`
+- `created_at TIMESTAMPTZ NOT NULL`
+- `updated_at TIMESTAMPTZ NOT NULL`
+
+### Remote: `notification_preferences`
+
+Key fields:
+
+- `id TEXT NOT NULL`
+- `user_id UUID NOT NULL`
+- `enabled BOOLEAN NOT NULL DEFAULT false`
+- `reminder_time TEXT NULL`
+- `timing_mode TEXT NOT NULL`
+- `created_at TIMESTAMPTZ NOT NULL`
+- `updated_at TIMESTAMPTZ NOT NULL`
 
 ## Initialization and Ownership Rules
 
@@ -283,16 +408,22 @@ the remote business tables use user-scoped ownership as part of the row identity
 - initialization is idempotent
 - transactions are never seeded
 - import/export history starts empty
-- the first authenticated user on a device can claim the local workspace
-- if a different authenticated user signs in before sync exists, the local workspace is reset and reseeded to avoid data leakage
-- after PowerSync integration, existing local syncable rows are also queued once for initial upload readiness
+- authenticated ownership is attached to syncable rows when a session exists
+- rows remain usable locally even before a remote sync succeeds
 
-## Import / Export Schema Notes
+## Sync Notes
+
+- syncable rows are written locally first
+- the outbox records create, update, and delete intents
+- pull reconciliation should use `updated_at` and `deleted_at`
+- failed remote writes do not erase local data
+- local-only tables are excluded from remote sync
+
+## Import / Export Notes
 
 - CSV import creates `transactions` plus optional new `accounts` and `categories`
-- imported business records can be stamped with the current authenticated `user_id`
-- CSV export reads from `transactions` and writes only to `export_records`
-- import and export history do not replace or duplicate business records
+- imported business records enter the same local-first sync path as manual entries
+- CSV export reads from local source tables and writes only to `export_records`
 
 ## Derived Data
 
@@ -305,4 +436,4 @@ The following stay derived from business tables:
 
 ## Summary
 
-The current schema now has four clear layers: local ledger data in Drift, PowerSync raw-table synchronization over that same SQLite database, local operational import/export history, and remote Supabase identity plus business tables. The app keeps its local-first behavior while the business records are now structured to sync safely per authenticated user.
+The schema now has three clear layers: local IndexedDB source data, local operational sync history, and remote Supabase continuity tables. The product behavior remains the same, but the storage model is now aligned to an offline-first web application.

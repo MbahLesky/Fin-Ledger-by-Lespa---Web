@@ -1,47 +1,47 @@
 # Data Requirements
 
-*Finance Ledger*
+*Finance Ledger Web*
 
 ## Overview
 
-This document defines the current data requirements for Finance Ledger after PowerSync was introduced on March 27, 2026.
+This document defines the data requirements for Finance Ledger as a React-based web application with offline-first behavior.
 
-Current implementation direction:
+Implementation direction:
 
-- Flutter + Riverpod for UI and application state
-- Drift + SQLite for local ledger persistence
-- PowerSync for sync-ready local-first synchronization
+- React + TypeScript for the browser UI
+- Zustand for application-facing state
+- Dexie + IndexedDB for local ledger persistence
 - Supabase Auth for sign-in and session restore
-- Supabase `public.profiles` for app-level user data
-- remote ledger tables prepared in Supabase/Postgres
+- Supabase PostgreSQL for remote continuity
+- service worker caching for offline shell loading
 
-## Current Product Data Behavior
+## Product Data Behavior
 
 - settings drive onboarding completion, theme, and preferred currency
 - accounts store opening balances and stay separate from transactions
-- categories classify transactions and support both system defaults and user-created items
-- transactions are the financial source of truth for dashboard and analytics
-- import and export history are stored locally for traceability
-- Supabase stores identity, app-level profile information, and remote syncable ledger records
-- dashboard and analytics remain derived, not persisted as summary tables
-- PowerSync sits between the local Drift database and the remote Supabase/Postgres ledger tables
+- categories classify transactions and support system defaults plus user-defined items
+- transactions remain the financial source of truth for dashboard and analytics
+- import and export history stay local for traceability
+- Supabase stores identity, app-level profile information, and synced business records
+- dashboard and analytics remain derived instead of stored as summary tables
+- sync metadata exists locally so the app can track pending, synced, and failed changes
 
 ## Entity Overview
 
 ### Profile
 
-**Purpose**
+Purpose:
 
 - stores the app-level user record tied to a Supabase-authenticated identity
 - keeps display and onboarding metadata separate from Supabase system auth tables
 
-**Required fields**
+Required fields:
 
 - `id`
 - `created_at`
 - `updated_at`
 
-**Optional fields**
+Optional fields:
 
 - `name`
 - `email`
@@ -50,21 +50,20 @@ Current implementation direction:
 - `onboarding_completed`
 - `preferred_currency`
 
-**Validation**
+Validation:
 
 - `id` must match the authenticated Supabase user id
 - no duplicate profile rows are allowed
-- email or phone may be absent depending on the auth method
 - auth secrets must never be stored in this table
 
 ### Account
 
-**Purpose**
+Purpose:
 
-- represents Cash, Bank, MoMo, Savings, and other user-facing money containers
+- represents Cash, Bank, MoMo, Savings, Wallet, and other user-facing money containers
 - supports onboarding balances and import account mapping
 
-**Required fields**
+Required fields:
 
 - `id`
 - `name`
@@ -77,12 +76,16 @@ Current implementation direction:
 - `created_at`
 - `updated_at`
 
-**Optional fields**
+Optional fields:
 
+- `remote_id`
 - `user_id`
+- `sync_status`
+- `sync_error`
+- `last_synced_at`
 - `deleted_at`
 
-**Validation**
+Validation:
 
 - name must not be empty
 - default accounts `Cash` and `Bank` must remain available
@@ -90,12 +93,12 @@ Current implementation direction:
 
 ### Category
 
-**Purpose**
+Purpose:
 
 - classifies transactions into income and expense groups
 - supports system defaults and user-created categories
 
-**Required fields**
+Required fields:
 
 - `id`
 - `name`
@@ -105,14 +108,18 @@ Current implementation direction:
 - `created_at`
 - `updated_at`
 
-**Optional fields**
+Optional fields:
 
+- `remote_id`
 - `user_id`
 - `icon_key`
 - `color_key`
+- `sync_status`
+- `sync_error`
+- `last_synced_at`
 - `deleted_at`
 
-**Validation**
+Validation:
 
 - name must not be empty
 - type must be `income` or `expense`
@@ -120,12 +127,12 @@ Current implementation direction:
 
 ### Transaction
 
-**Purpose**
+Purpose:
 
 - stores each income and expense record
 - powers dashboard totals, account balances, history, filters, and analytics
 
-**Required fields**
+Required fields:
 
 - `id`
 - `account_id`
@@ -136,14 +143,18 @@ Current implementation direction:
 - `created_at`
 - `updated_at`
 
-**Optional fields**
+Optional fields:
 
+- `remote_id`
 - `user_id`
 - `note`
 - `reference`
+- `sync_status`
+- `sync_error`
+- `last_synced_at`
 - `deleted_at`
 
-**Validation**
+Validation:
 
 - amount must be numeric and greater than zero
 - type must be `income` or `expense`
@@ -153,11 +164,11 @@ Current implementation direction:
 
 ### Settings
 
-**Purpose**
+Purpose:
 
 - stores stable app preferences and onboarding completion
 
-**Required fields**
+Required fields:
 
 - `id`
 - `currency_code`
@@ -166,11 +177,15 @@ Current implementation direction:
 - `created_at`
 - `updated_at`
 
-**Optional fields**
+Optional fields:
 
+- `remote_id`
 - `user_id`
+- `sync_status`
+- `sync_error`
+- `last_synced_at`
 
-**Validation**
+Validation:
 
 - one canonical settings row should exist
 - currency must be supported by the app
@@ -178,11 +193,11 @@ Current implementation direction:
 
 ### Notification Preference
 
-**Purpose**
+Purpose:
 
 - stores reminder preferences separately from general settings
 
-**Required fields**
+Required fields:
 
 - `id`
 - `enabled`
@@ -190,18 +205,27 @@ Current implementation direction:
 - `created_at`
 - `updated_at`
 
-**Optional fields**
+Optional fields:
 
+- `remote_id`
 - `user_id`
 - `reminder_time`
+- `sync_status`
+- `sync_error`
+- `last_synced_at`
+
+Validation:
+
+- reminder time may be absent when reminders are disabled
+- persisted preference does not guarantee identical background delivery across all browsers
 
 ### Import Record
 
-**Purpose**
+Purpose:
 
 - stores local audit history for completed or failed CSV imports
 
-**Required fields**
+Required fields:
 
 - `id`
 - `file_name`
@@ -213,18 +237,18 @@ Current implementation direction:
 - `error_summary`
 - `created_at`
 
-**Behavior**
+Behavior:
 
 - created only when an import is confirmed and processed
-- local-only and not part of future syncable business data
+- local-only and not part of synced business data
 
 ### Export Record
 
-**Purpose**
+Purpose:
 
 - stores local audit history for generated CSV exports
 
-**Required fields**
+Required fields:
 
 - `id`
 - `format`
@@ -233,15 +257,36 @@ Current implementation direction:
 - `file_name`
 - `created_at`
 
+### Sync Operation
+
+Purpose:
+
+- tracks local outbox entries and failed sync attempts
+
+Required fields:
+
+- `id`
+- `entity_name`
+- `entity_id`
+- `operation`
+- `status`
+- `created_at`
+- `updated_at`
+
+Optional fields:
+
+- `payload`
+- `error_message`
+- `retry_count`
+- `last_attempted_at`
+
 ## Authentication and Ownership Requirements
 
-- the app must support email/password through Supabase in the current phase
+- the app must support email/password through Supabase in the active web phase
 - the app must keep Google and phone auth visible in the UI while guarding them with coming-soon feedback instead of broken flows
-- the app must restore valid sessions on launch
-- a `public.profiles` row must exist after first successful authentication
+- the app must restore valid sessions on browser reload
+- a `public.profiles` row must exist after the first successful authentication
 - local business records should be stamped with the authenticated user id when available
-- a different user signing into the same device before sync exists must not inherit another user's local ledger data
-- PowerSync must only connect with an authenticated Supabase session
 - syncable remote rows must remain owned by `user_id = auth.uid()`
 
 ## Sync Classification
@@ -262,6 +307,7 @@ Current implementation direction:
 
 - `import_records`
 - `export_records`
+- `sync_operations`
 
 ### Derived-only records
 
@@ -312,12 +358,12 @@ Supported values:
 - unknown categories can be mapped to an existing category or created as new local categories
 - blank categories must be mapped before import because stored transactions require a category
 
-## CSV Export Requirements
+## Export Requirements
 
-- exports all transactions for the current local workspace
+- exports all transactions for the current local workspace unless filters are later added
 - uses columns `date,type,amount,category,account,note`
 - output should be spreadsheet-friendly and re-importable later
-- export is local-only and handed off through the mobile share/save flow
+- export is delivered through browser download behavior
 
 ## Derived Data
 
@@ -328,15 +374,13 @@ The following remain derived instead of persisted as source-of-truth tables:
 - current balances
 - recent activity summaries
 
-## Future-Readiness
+## Future Readiness
 
-- local business tables already carry `user_id` for ownership alignment
+- syncable business tables already carry ownership and sync metadata
 - profile ownership is anchored to Supabase `auth.uid()`
-- timestamps remain present for migration and later sync readiness
-- import/export logic stays append-first and local-first and remains excluded from PowerSync source-of-truth syncing
-- remote ledger tables now preserve the local app IDs while using user ownership to avoid cross-user collisions
-- PowerSync raw tables allow Drift to stay the local data API without rewriting feature modules
+- timestamps remain present for migration, reconciliation, and conflict handling
+- import/export logic stays append-first and local-first and remains excluded from remote source-of-truth syncing
 
 ## Summary
 
-Finance Ledger now has three complementary data layers: local ledger data in Drift, a PowerSync sync layer over the same SQLite database, and remote identity/profile plus ledger data in Supabase. The app remains offline-first, while authenticated ownership and sync readiness are now real instead of only planned.
+Finance Ledger now has a browser-aligned data model: local IndexedDB source data, remote Supabase continuity, and local sync metadata that bridges the two. The finance domain remains the same; only the delivery architecture has changed.

@@ -9,8 +9,9 @@ This document defines the functional and non-functional requirements for Finance
 ## Scope
 
 Finance Ledger enables users to:
+
 - log income and expenses
-- record transactions through the mobile app and WhatsApp chatbot
+- record transactions through the web application and WhatsApp chatbot
 - view summaries and analytics
 - import and export financial records
 
@@ -21,10 +22,11 @@ The system is designed to be simple, fast, and accessible.
 ### Architecture at a Glance
 
 The platform consists of:
-- a Flutter mobile app
+
+- a React-based web application
+- an installable PWA shell for offline-capable browser usage
 - a WhatsApp chatbot
-- a backend API
-- a persistent database
+- a backend and persistent database core through Supabase
 
 ### User Roles
 
@@ -73,7 +75,7 @@ The MVP supports one primary user role: **User**.
 ### Currency Preferences
 
 - The system shall allow a user to select a preferred currency during onboarding. (M)
-- The system shall store the selected currency in app state. (M)
+- The system shall store the selected currency in app state and durable local storage. (M)
 - The system shall use the selected currency across dashboard, transaction, analytics, and starting-balance displays. (M)
 
 ### Notifications
@@ -94,11 +96,18 @@ The MVP supports one primary user role: **User**.
 - The system shall validate file structure and reject invalid data safely.
 - The system shall allow export using filters such as date range and category.
 
+### Offline-First Behavior
+
+- The system shall save core finance records locally before cloud sync.
+- The system shall allow core ledger usage while offline after the app shell has been loaded.
+- The system shall synchronize pending local changes when connectivity returns.
+- The system shall cache static assets required for offline loading of the app shell.
+
 ## Non-Functional Requirements
 
 ### Performance
 
-- Common app actions should feel responsive on mobile devices.
+- Common app actions should feel responsive on desktop and mobile browsers.
 - Dashboard summary retrieval should be fast enough for regular use.
 - Chatbot replies should return in a reasonable time for conversational interaction.
 
@@ -106,7 +115,7 @@ The MVP supports one primary user role: **User**.
 
 - User data shall be protected through authenticated access.
 - Passwords shall never be stored in raw form.
-- API endpoints shall validate input and protect against malformed requests.
+- Backend operations shall validate input and protect against malformed requests.
 - File uploads shall be validated before processing.
 
 ### Reliability
@@ -114,21 +123,24 @@ The MVP supports one primary user role: **User**.
 - Transactions shall not be duplicated accidentally.
 - Import operations shall provide clear success and failure reporting.
 - Chatbot parsing failures shall not silently create incorrect transactions.
+- Local data shall remain usable when the network is unavailable.
 
 ### Usability
 
 - Transaction entry should require minimal steps.
 - The UI shall remain intuitive for non-technical users.
 - Error messages shall be understandable and actionable.
+- The interface shall adapt cleanly to common mobile and desktop browser widths.
 
 ### Scalability
 
-- The backend shall support new client channels such as web or desktop in the future.
+- The backend shall support new client channels such as chatbot and future connected surfaces.
 - The architecture should support additional chatbot platforms later.
 
 ## Data Requirements
 
 The system requires storage for:
+
 - users
 - accounts
 - user preferences including currency and notification settings
@@ -137,19 +149,20 @@ The system requires storage for:
 - import records
 - export records
 - chatbot identities
+- sync metadata for pending and failed local changes
 
 ## Integration Requirements
 
 - A messaging provider is required for WhatsApp-based chatbot flows.
-- The mobile app and chatbot must communicate through the same backend core.
+- The web application and chatbot must communicate through the same backend core.
 - Analytics must derive from the same transaction source of truth.
 
 ## Constraints
 
 - MVP scope must remain focused.
 - The chatbot depends on third-party platform capabilities and pricing.
-- Multi-platform support beyond mobile is future scope.
+- Offline browser capability depends partly on service worker, cache, and browser support.
 
 ## Summary
 
-Finance Ledger should deliver a fast and understandable financial tracking experience centered on quick entry, clear insight, and a shared backend foundation.
+Finance Ledger should deliver a fast and understandable financial tracking experience centered on quick entry, clear insight, and a shared backend foundation. The current implementation direction achieves that through an offline-first web application.

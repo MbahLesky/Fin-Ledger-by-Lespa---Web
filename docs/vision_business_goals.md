@@ -10,14 +10,14 @@ Finance Ledger aims to turn financial tracking into a natural habit by reducing 
 
 ## Mission Statement
 
-Provide a lightweight and intuitive platform that helps users log transactions easily and gain clear financial insight through a combination of structured UI and conversational interfaces.
+Provide a lightweight and intuitive platform that helps users log transactions easily and gain clear financial insight through a combination of structured web experience and conversational interfaces.
 
 ## Value Proposition
 
-- **Fast input:** log transactions instantly from the app or WhatsApp.
+- **Fast input:** log transactions instantly from the web app or WhatsApp.
 - **Low effort:** no accounting knowledge or heavy setup is required.
 - **Clear insight:** simple analytics make spending and income easier to understand.
-- **Flexible access:** users can interact through mobile UI or chat.
+- **Flexible access:** users can interact through browser, installed PWA, or chat.
 - **Habit-friendly design:** the product is built to encourage repeated use.
 
 ## Target Users
@@ -36,14 +36,14 @@ Provide a lightweight and intuitive platform that helps users log transactions e
 
 - Users do not track finances consistently.
 - Many finance apps are too complex or time-consuming.
-- There is often no quick way to log transactions on the go.
+- There is often no quick way to log transactions.
 - Users lack clear visibility into financial habits.
 
 ## Business Goals
 
 ### Short-Term Goals (0 to 6 Months)
 
-- Build and launch the MVP with a mobile app and WhatsApp chatbot.
+- Build and launch the MVP with a web application and WhatsApp chatbot foundation.
 - Enable fast and reliable transaction logging.
 - Deliver clear baseline financial analytics.
 - Validate adoption and user behavior.
@@ -53,14 +53,14 @@ Provide a lightweight and intuitive platform that helps users log transactions e
 - Improve trend analysis and spending breakdowns.
 - Enhance chatbot intelligence and input recognition.
 - Expand chat integrations to additional platforms such as Telegram.
-- Improve overall user experience and performance.
+- Improve overall user experience, sync reliability, and performance.
 
 ### Long-Term Goals (18+ Months)
 
 - Introduce smarter insights and automation.
 - Add more advanced analytics and reporting.
-- Launch a web or desktop experience for deeper analysis.
 - Improve personalization and intelligent summaries.
+- Expand connected channels without changing the product's core finance model.
 
 ## Key Success Metrics
 
@@ -74,14 +74,17 @@ Provide a lightweight and intuitive platform that helps users log transactions e
 ## Competitive Advantage
 
 Finance Ledger stands out by combining quick transaction entry with conversational logging. Its main differentiators are:
-- WhatsApp-first financial tracking
+
+- WhatsApp-friendly financial tracking
 - low-friction input
 - focused, lightweight scope
 - clear insights without accounting complexity
+- offline-capable web usage
 
 ## Product Positioning
 
 Finance Ledger is a simple financial tracking and analytics tool, not a full accounting system. It prioritizes:
+
 - ease of use over complexity
 - speed over feature overload
 - consistency over advanced financial tooling
@@ -89,6 +92,7 @@ Finance Ledger is a simple financial tracking and analytics tool, not a full acc
 ## Future Direction
 
 The product will continue to improve in three main areas:
+
 - more natural chat interaction
 - deeper but still simple analytics
 - smarter automation such as categorization and summaries

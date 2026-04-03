@@ -4,7 +4,7 @@
 
 ## Purpose
 
-This document defines the major use cases currently supported or explicitly planned for Finance Ledger across the mobile app and later chatbot/backend channels.
+This document defines the major use cases currently supported or explicitly planned for Finance Ledger across the web application and later chatbot or backend channels.
 
 ## Scope
 
@@ -12,7 +12,7 @@ The use cases cover:
 
 - user authentication
 - profile creation and completion
-- transaction entry through app and later chatbot channels
+- transaction entry through the web app and later chatbot channels
 - transaction management
 - dashboard and analytics access
 - import and export operations
@@ -20,7 +20,7 @@ The use cases cover:
 ## Actors
 
 - **Primary actor:** User
-- **Supporting systems:** Mobile application, Supabase Auth, Supabase profile table, local database, file processing module, future chatbot/backend services
+- **Supporting systems:** Web application, Supabase Auth, Supabase profile table, local database, file processing module, future chatbot/backend services
 
 ## Use Case List
 
@@ -29,7 +29,7 @@ The use cases cover:
 | UC-01 | Register Account | User |
 | UC-02 | Log In | User |
 | UC-03 | Log Out | User |
-| UC-04 | Add Transaction via Mobile App | User |
+| UC-04 | Add Transaction via Web App | User |
 | UC-05 | Add Transaction via WhatsApp Chatbot | User |
 | UC-06 | Edit Transaction | User |
 | UC-07 | Delete Transaction | User |
@@ -48,8 +48,8 @@ The use cases cover:
 - **Description:** The user creates a new Finance Ledger account through Supabase authentication.
 - **Preconditions:** The user does not already have an active authenticated session.
 - **Trigger:** The user selects the register option.
-- **Main flow:** Open registration screen -> choose email/password -> submit -> system validates -> Supabase account is created -> Finance Ledger ensures the `profiles` row exists after the first successful authenticated session -> profile completion is shown if needed -> onboarding begins.
-- **Alternative flows:** Invalid input returns validation errors; duplicate account returns an account-exists message; email confirmation may be required; selecting Google shows a coming-soon snackbar; selecting phone opens the phone screen but the submit action still returns coming-soon guidance.
+- **Main flow:** Open registration page -> choose email/password -> submit -> system validates -> Supabase account is created -> Finance Ledger ensures the `profiles` row exists after the first successful authenticated session -> profile completion is shown if needed -> onboarding begins.
+- **Alternative flows:** Invalid input returns validation errors; duplicate account returns an account-exists message; email confirmation may be required; selecting Google shows a coming-soon message; selecting phone opens the phone page but the submit action still returns coming-soon guidance.
 - **Postconditions:** A Supabase-authenticated account exists and the app can continue with profile completion or onboarding.
 
 ### UC-02: Log In
@@ -57,8 +57,8 @@ The use cases cover:
 - **Description:** The user signs in to access Finance Ledger data.
 - **Preconditions:** A valid user account exists.
 - **Trigger:** The user submits email and password credentials.
-- **Main flow:** Open login screen -> submit email/password -> system validates with Supabase -> authenticated session starts -> Finance Ledger loads or creates the `profiles` row -> system routes the user to profile completion, onboarding, or dashboard.
-- **Alternative flows:** Invalid credentials return an error message; missing Supabase setup returns a configuration message; selecting Google shows a coming-soon snackbar; submitting the phone screen returns coming-soon guidance without entering an incomplete OTP flow.
+- **Main flow:** Open login page -> submit email/password -> system validates with Supabase -> authenticated session starts -> Finance Ledger loads or creates the `profiles` row -> system routes the user to profile completion, onboarding, or dashboard.
+- **Alternative flows:** Invalid credentials return an error message; missing Supabase setup returns a configuration message; selecting Google shows a coming-soon message; submitting the phone page returns coming-soon guidance without entering an incomplete OTP flow.
 - **Postconditions:** The user is authenticated and routed to the correct post-auth state.
 
 ### UC-03: Log Out
@@ -66,14 +66,14 @@ The use cases cover:
 - **Description:** The user ends the current session securely.
 - **Preconditions:** The user is logged in.
 - **Trigger:** The user selects logout.
-- **Main flow:** Tap logout -> system clears the Supabase session -> login screen is shown.
+- **Main flow:** Select logout -> system clears the Supabase session -> login page is shown.
 - **Postconditions:** The current session is terminated.
 
-### UC-04: Add Transaction via Mobile App
+### UC-04: Add Transaction via Web App
 
-- **Description:** The user records an income or expense through the app.
+- **Description:** The user records an income or expense through the web application.
 - **Preconditions:** The user is authenticated and a local workspace is available.
-- **Trigger:** The user taps the add transaction action.
+- **Trigger:** The user opens the add transaction action.
 - **Main flow:** Open form -> enter amount -> choose type -> choose category -> optionally add description -> choose date -> save -> system validates -> transaction is stored locally -> dashboard refreshes.
 - **Alternative flows:** Invalid amount returns validation errors; save failure returns a retry or failure message.
 - **Postconditions:** The transaction is stored and available to analytics.
@@ -101,7 +101,7 @@ The use cases cover:
 - **Description:** The user removes a transaction from the system.
 - **Preconditions:** The user is authenticated and the transaction exists.
 - **Trigger:** The user selects delete.
-- **Main flow:** Open details -> tap delete -> confirm -> system removes transaction -> summaries refresh.
+- **Main flow:** Open details -> select delete -> confirm -> system removes transaction -> summaries refresh.
 - **Alternative flows:** The user cancels deletion and the record remains unchanged.
 - **Postconditions:** The selected transaction is removed.
 
@@ -109,7 +109,7 @@ The use cases cover:
 
 - **Description:** The user reviews saved transaction history.
 - **Preconditions:** The user is authenticated.
-- **Trigger:** The user opens the transactions screen.
+- **Trigger:** The user opens the transactions page.
 - **Main flow:** System loads transactions -> list is displayed -> user scrolls and reviews records.
 - **Postconditions:** The user can view transaction history.
 
@@ -134,7 +134,7 @@ The use cases cover:
 
 - **Description:** The user views visual insights and trends.
 - **Preconditions:** The user is authenticated and enough data exists to compute analytics.
-- **Trigger:** The user opens the analytics screen.
+- **Trigger:** The user opens the analytics page.
 - **Main flow:** System retrieves analytics data -> charts and summaries are displayed -> user reviews trends and breakdowns.
 - **Alternative flows:** If there is not enough data, the system displays an empty or starter state.
 - **Postconditions:** The user can interpret financial patterns visually.
@@ -153,7 +153,7 @@ The use cases cover:
 - **Description:** The user exports financial records for backup, sharing, or analysis.
 - **Preconditions:** The user is authenticated and records exist.
 - **Trigger:** The user selects export.
-- **Main flow:** Open export screen -> choose format -> optionally choose filters -> confirm -> system generates file -> file is returned to the user.
+- **Main flow:** Open export page -> choose format -> optionally choose filters -> confirm -> system generates file -> file is returned to the user.
 - **Alternative flows:** Unsupported format or generation failures return clear error messages.
 - **Postconditions:** An export file is generated and made available.
 
@@ -162,7 +162,7 @@ The use cases cover:
 - **Description:** The user imports transactions from a supported file.
 - **Preconditions:** The user is authenticated and the file format is supported.
 - **Trigger:** The user selects import and uploads a file.
-- **Main flow:** Open import screen -> choose file -> system validates structure -> user confirms import -> valid transactions are stored -> result summary is shown.
+- **Main flow:** Open import page -> choose file -> system validates structure -> user confirms import -> valid transactions are stored -> result summary is shown.
 - **Alternative flows:** Invalid file structure or bad rows are rejected or skipped with clear reporting.
 - **Postconditions:** Valid data is added to the system and dashboards can reflect the update.
 
@@ -177,4 +177,4 @@ The use cases cover:
 
 ## Summary
 
-The Finance Ledger use-case set now begins with real Supabase-backed identity, then moves into onboarding and daily finance management. Later chatbot and backend channels should extend that same authenticated ownership model.
+The Finance Ledger use-case set begins with Supabase-backed identity, then moves into onboarding and daily finance management in the web application. Later chatbot and backend channels extend that same authenticated ownership model rather than redefining the product.

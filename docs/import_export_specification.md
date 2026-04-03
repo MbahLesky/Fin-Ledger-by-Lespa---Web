@@ -4,7 +4,7 @@
 
 ## Purpose
 
-This document defines the current offline-first CSV import and export behavior.
+This document defines the current offline-first CSV import and export behavior for the web application.
 
 ## Scope
 
@@ -12,7 +12,7 @@ Included in MVP:
 
 - local CSV import
 - import preview and validation
-- account/category mapping
+- account and category mapping
 - append-only import behavior
 - duplicate detection within the file and conservative duplicate checks against existing local data
 - CSV export of all transactions
@@ -20,12 +20,12 @@ Included in MVP:
 
 Out of scope:
 
-- cloud backup
+- cloud backup as a user-facing backup feature
 - backend-assisted import
 - bank API import
-- XLSX/JSON support
+- XLSX or JSON support
 - OCR or receipt import
-- sync-aware merge logic
+- sync-aware merge UX
 
 ## CSV Format
 
@@ -59,13 +59,13 @@ date,type,amount,category,account,note
 ## Import Flow
 
 1. User opens Import Data from onboarding or settings.
-2. User chooses a local CSV file.
+2. User chooses a local CSV file through the browser file picker.
 3. App parses the file locally.
 4. App validates headers and rows.
 5. App shows preview counts and invalid-row details.
-6. App builds account/category mappings.
+6. App builds account and category mappings.
 7. User confirms mapping choices.
-8. App imports valid rows only into Drift.
+8. App imports valid rows only into Dexie and IndexedDB.
 9. App records a local import history entry.
 10. Dashboard, transactions, and analytics update from the stored data.
 
@@ -110,9 +110,9 @@ Future-safe extension:
 
 ## Export Behavior
 
-- export reads all active transactions from Drift
-- export writes a CSV file locally
-- export opens the platform share/save sheet
+- export reads all active transactions from local IndexedDB
+- export generates a CSV file in the browser
+- export downloads the file locally
 - export records a local export history entry
 
 Default filename pattern:
@@ -134,8 +134,8 @@ finance_ledger_export_YYYY-MM-DD.csv
 - stronger duplicate review tooling
 - replace-all import mode
 - XLSX and JSON formats
-- backend and sync-aware portability once online features exist
+- backend and sync-aware portability once online features expand
 
 ## Summary
 
-Import is designed to help users bring real historical records into the app safely. Export is designed to give users a clean CSV backup they can save, share, analyze, or re-import later.
+Import is designed to help users bring real historical records into the app safely. Export is designed to give users a clean CSV backup they can download, analyze, or re-import later.
