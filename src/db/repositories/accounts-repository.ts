@@ -1,5 +1,6 @@
 import { appDb } from "@/db/dexie";
 import { createDefaultAccounts } from "@/db/seed/default-records";
+import { settingsRepository } from "@/db/repositories/settings-repository";
 import type { Account, AccountBalanceSnapshot, AccountType, TransactionRecord } from "@/types";
 import { nowIso } from "@/utils/date-utils";
 import { createId } from "@/utils/id";
@@ -8,7 +9,8 @@ import { syncRepository } from "@/db/repositories/sync-repository";
 async function ensureDefaultAccounts() {
   const count = await appDb.accounts.count();
   if (count === 0) {
-    await appDb.accounts.bulkPut(createDefaultAccounts());
+    const settings = await settingsRepository.getSettings();
+    await appDb.accounts.bulkPut(createDefaultAccounts(settings.currencyCode));
   }
 }
 
@@ -113,6 +115,22 @@ export const accountsRepository = {
     );
   },
 
+  async syncDefaultAccountCurrency(currencyCode: string) {
+    await ensureDefaultAccounts();
+
+    const defaultAccounts = await appDb.accounts
+      .filter((account) => account.isDefault && !account.deletedAt && account.currencyCode !== currencyCode)
+      .toArray();
+
+    await Promise.all(
+      defaultAccounts.map((account) =>
+        this.updateAccount(account.id, {
+          currencyCode
+        })
+      )
+    );
+  },
+
   async softDelete(id: string) {
     const account = await appDb.accounts.get(id);
     if (!account || account.isDefault) {
@@ -143,4 +161,3 @@ export const accountsRepository = {
     );
   }
 };
-

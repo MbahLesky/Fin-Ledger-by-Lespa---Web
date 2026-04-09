@@ -10,11 +10,10 @@ export function NotFoundPage() {
       <EmptyState
         icon={Compass}
         title="That page is not part of this flow"
-        description="The route you opened does not match the current Finance Ledger web flow. Return to the dashboard or continue with onboarding if your setup is still in progress."
+        description="The route you opened does not match the current Fin Tracker web flow. Return to the dashboard or continue with onboarding if your setup is still in progress."
         actionLabel="Go to dashboard"
         onAction={() => navigate("/dashboard")}
       />
     </div>
   );
 }
-

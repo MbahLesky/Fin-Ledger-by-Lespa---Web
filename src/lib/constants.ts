@@ -1,6 +1,6 @@
 import type { AccountType } from "@/types/common";
 
-export const APP_NAME = "Finance Ledger";
+export const APP_NAME = "Fin Tracker";
 
 export const APP_TAGLINE = "Make financial tracking as easy as sending a message.";
 
@@ -60,4 +60,3 @@ export const DEFAULT_CURRENCY = "USD";
 
 export const COMING_SOON_MESSAGE =
   "This path stays visible in the UI, but it is not active in the current web phase yet.";
-

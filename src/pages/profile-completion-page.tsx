@@ -49,7 +49,7 @@ export function ProfileCompletionPage() {
             </p>
             <h1 className="text-3xl font-bold">One quick step before setup</h1>
             <p className="text-sm leading-6 text-muted-foreground">
-              Your app profile needs a name before Finance Ledger can continue into currency, balances, and reminders.
+              Your app profile needs a name before Fin Tracker can continue into currency, balances, and reminders.
             </p>
           </div>
 

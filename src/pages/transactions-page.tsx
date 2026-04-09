@@ -21,6 +21,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { accountsRepository } from "@/db/repositories/accounts-repository";
 import { categoriesRepository } from "@/db/repositories/categories-repository";
+import { settingsRepository } from "@/db/repositories/settings-repository";
 import { transactionsRepository } from "@/db/repositories/transactions-repository";
 import { TransactionForm } from "@/features/transactions/transaction-form";
 import { ROUTES } from "@/routes/route-constants";
@@ -36,8 +37,10 @@ export function TransactionsPage() {
   const setFilters = useTransactionFiltersStore((state) => state.setFilters);
   const accounts = useLiveQuery(() => accountsRepository.listActive(), []);
   const categories = useLiveQuery(() => categoriesRepository.listActive(), []);
+  const settings = useLiveQuery(() => settingsRepository.getSettings(), []);
   const transactions = useLiveQuery(() => transactionsRepository.listWithRelations(filters), [filters]);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const selectedCurrencyCode = settings?.currencyCode ?? "USD";
 
   const editingTransaction = useMemo(
     () => transactions?.find((transaction) => transaction.id === editingId),
@@ -161,7 +164,7 @@ export function TransactionsPage() {
                   </TableCell>
                   <TableCell className={transaction.type === "income" ? "text-secondary" : "text-accent"}>
                     {transaction.type === "income" ? "+" : "-"}
-                    {formatCurrency(transaction.amount)}
+                    {formatCurrency(transaction.amount, selectedCurrencyCode)}
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">

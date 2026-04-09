@@ -15,6 +15,7 @@ import {
 import { EmptyState } from "@/components/data-display/empty-state";
 import { PageShell } from "@/components/layout/page-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { settingsRepository } from "@/db/repositories/settings-repository";
 import { transactionsRepository } from "@/db/repositories/transactions-repository";
 import { formatCurrency } from "@/utils/formatting";
 import { LineChart as LineChartIcon } from "lucide-react";
@@ -25,6 +26,8 @@ const CHART_COLORS = ["#173B7A", "#0F8C83", "#E1644C", "#4B6FAF", "#57B9B1", "#F
 export function AnalyticsPage() {
   const transactions = useLiveQuery(() => transactionsRepository.listWithRelations(), []);
   const analytics = useLiveQuery(() => analyticsService.getSnapshots(), []);
+  const settings = useLiveQuery(() => settingsRepository.getSettings(), []);
+  const selectedCurrencyCode = settings?.currencyCode ?? "USD";
 
   const averageExpense = useMemo(() => {
     const expenses = (transactions ?? []).filter((transaction) => transaction.type === "expense");
@@ -44,7 +47,7 @@ export function AnalyticsPage() {
         <EmptyState
           icon={LineChartIcon}
           title="Analytics will appear as soon as you have data"
-          description="Add transactions or import a CSV first. Finance Ledger handles empty analytics safely and keeps the starter state useful."
+          description="Add transactions or import a CSV first. Fin Tracker handles empty analytics safely and keeps the starter state useful."
         />
       </PageShell>
     );
@@ -60,7 +63,7 @@ export function AnalyticsPage() {
           <CardContent className="p-6">
             <p className="text-sm text-muted-foreground">Total income</p>
             <p className="mt-2 text-3xl font-bold text-secondary">
-              {formatCurrency(analytics?.totals.income ?? 0)}
+              {formatCurrency(analytics?.totals.income ?? 0, selectedCurrencyCode)}
             </p>
           </CardContent>
         </Card>
@@ -68,14 +71,14 @@ export function AnalyticsPage() {
           <CardContent className="p-6">
             <p className="text-sm text-muted-foreground">Total expenses</p>
             <p className="mt-2 text-3xl font-bold text-accent">
-              {formatCurrency(analytics?.totals.expense ?? 0)}
+              {formatCurrency(analytics?.totals.expense ?? 0, selectedCurrencyCode)}
             </p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-6">
             <p className="text-sm text-muted-foreground">Average expense</p>
-            <p className="mt-2 text-3xl font-bold">{formatCurrency(averageExpense)}</p>
+            <p className="mt-2 text-3xl font-bold">{formatCurrency(averageExpense, selectedCurrencyCode)}</p>
           </CardContent>
         </Card>
       </div>
@@ -101,7 +104,7 @@ export function AnalyticsPage() {
                 <CartesianGrid strokeDasharray="4 4" vertical={false} />
                 <XAxis dataKey="label" tickLine={false} axisLine={false} />
                 <YAxis tickFormatter={(value) => `${value}`} tickLine={false} axisLine={false} />
-                <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                <Tooltip formatter={(value: number) => formatCurrency(value, selectedCurrencyCode)} />
                 <Area type="monotone" dataKey="income" stroke="#0F8C83" fill="url(#incomeFill)" strokeWidth={2} />
                 <Area type="monotone" dataKey="expense" stroke="#E1644C" fill="url(#expenseFill)" strokeWidth={2} />
               </AreaChart>
@@ -128,7 +131,7 @@ export function AnalyticsPage() {
                     <Cell key={entry.name} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                   ))}
                 </Pie>
-                <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                <Tooltip formatter={(value: number) => formatCurrency(value, selectedCurrencyCode)} />
               </PieChart>
             </ResponsiveContainer>
           </CardContent>
@@ -137,4 +140,3 @@ export function AnalyticsPage() {
     </PageShell>
   );
 }
-

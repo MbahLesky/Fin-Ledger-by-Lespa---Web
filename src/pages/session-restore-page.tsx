@@ -10,11 +10,10 @@ export function SessionRestorePage() {
         <div className="space-y-2">
           <h1 className="text-2xl font-bold">Restoring your session...</h1>
           <p className="text-sm leading-6 text-muted-foreground">
-            Finance Ledger is checking your browser session and loading the right flow for you.
+            Fin Tracker is checking your browser session and loading the right flow for you.
           </p>
         </div>
       </div>
     </div>
   );
 }
-

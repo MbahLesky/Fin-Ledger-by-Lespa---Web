@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { accountsRepository } from "@/db/repositories/accounts-repository";
 import { SUPPORTED_CURRENCIES } from "@/lib/constants";
 import { ROUTES } from "@/routes/route-constants";
 import { settingsRepository } from "@/db/repositories/settings-repository";
@@ -16,6 +17,7 @@ export function OnboardingCurrencyPage() {
 
   async function chooseCurrency(currencyCode: string) {
     await settingsRepository.setCurrency(currencyCode);
+    await accountsRepository.syncDefaultAccountCurrency(currencyCode);
     await saveProfile({
       preferredCurrency: currencyCode
     });
@@ -106,4 +108,3 @@ export function OnboardingCurrencyPage() {
     </div>
   );
 }
-

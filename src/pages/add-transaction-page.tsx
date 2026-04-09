@@ -16,7 +16,7 @@ export function AddTransactionPage() {
           <CardHeader>
             <CardTitle>Manual entry</CardTitle>
             <CardDescription>
-              Amount, type, category, account, note, and date are validated before Finance Ledger saves locally.
+              Amount, type, category, account, note, and date are validated before Fin Tracker saves locally.
             </CardDescription>
           </CardHeader>
           <CardContent>

@@ -103,7 +103,7 @@ export function OnboardingReminderPage() {
               <div className="space-y-3">
                 <h2 className="text-2xl font-bold">Browser reminder guidance</h2>
                 <p className="text-sm leading-6 text-primary-foreground/84">
-                  Permission state: <span className="font-semibold">{permission}</span>. If background notifications are limited on your platform, Finance Ledger still keeps the preference and can fall back to in-app guidance later.
+                  Permission state: <span className="font-semibold">{permission}</span>. If background notifications are limited on your platform, Fin Tracker still keeps the preference and can fall back to in-app guidance later.
                 </p>
               </div>
               <div className="rounded-xl bg-white/12 p-4 text-sm text-primary-foreground/88">

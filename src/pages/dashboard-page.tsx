@@ -16,6 +16,7 @@ import { PageShell } from "@/components/layout/page-shell";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { dashboardRepository } from "@/db/repositories/dashboard-repository";
+import { settingsRepository } from "@/db/repositories/settings-repository";
 import { useNetworkStatus } from "@/hooks/use-network-status";
 import { useSyncStatus } from "@/hooks/use-sync-status";
 import { ROUTES } from "@/routes/route-constants";
@@ -25,9 +26,11 @@ import { formatCurrency } from "@/utils/formatting";
 export function DashboardPage() {
   const navigate = useNavigate();
   const dashboard = useLiveQuery(() => dashboardRepository.getSnapshot(), []);
+  const settings = useLiveQuery(() => settingsRepository.getSettings(), []);
   const syncState = useSyncStatus();
   const isOnline = useNetworkStatus();
   const userId = useAuthStore((state) => state.user?.id);
+  const selectedCurrencyCode = settings?.currencyCode ?? "USD";
 
   const hasTransactions = (dashboard?.recentTransactions.length ?? 0) > 0;
 
@@ -54,27 +57,27 @@ export function DashboardPage() {
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <MetricCard
           label="Current balance"
-          value={formatCurrency(dashboard?.currentBalance ?? 0)}
+          value={formatCurrency(dashboard?.currentBalance ?? 0, selectedCurrencyCode)}
           icon={CreditCard}
           trendLabel="Across all active accounts"
         />
         <MetricCard
           label="Total income"
-          value={formatCurrency(dashboard?.totalIncome ?? 0)}
+          value={formatCurrency(dashboard?.totalIncome ?? 0, selectedCurrencyCode)}
           icon={TrendingUp}
           tone="secondary"
           trendLabel="Stored locally first"
         />
         <MetricCard
           label="Total expenses"
-          value={formatCurrency(dashboard?.totalExpenses ?? 0)}
+          value={formatCurrency(dashboard?.totalExpenses ?? 0, selectedCurrencyCode)}
           icon={TrendingDown}
           tone="accent"
           trendLabel="Expense ledger total"
         />
         <MetricCard
           label="Today's spending"
-          value={formatCurrency(dashboard?.todaySpending ?? 0)}
+          value={formatCurrency(dashboard?.todaySpending ?? 0, selectedCurrencyCode)}
           icon={ReceiptText}
           tone="accent"
         />
@@ -117,9 +120,9 @@ export function DashboardPage() {
                   <p className="text-xs text-muted-foreground capitalize">{account.type.replace("_", " ")}</p>
                 </div>
                 <div className="text-right">
-                  <p className="font-semibold">{formatCurrency(account.currentBalance, account.currencyCode)}</p>
+                  <p className="font-semibold">{formatCurrency(account.currentBalance, selectedCurrencyCode)}</p>
                   <p className="text-xs text-muted-foreground">
-                    Opening {formatCurrency(account.initialBalance, account.currencyCode)}
+                    Opening {formatCurrency(account.initialBalance, selectedCurrencyCode)}
                   </p>
                 </div>
               </div>
@@ -148,7 +151,7 @@ export function DashboardPage() {
                 <div className="text-right">
                   <p className={`font-semibold ${transaction.type === "income" ? "text-secondary" : "text-accent"}`}>
                     {transaction.type === "income" ? "+" : "-"}
-                    {formatCurrency(transaction.amount)}
+                    {formatCurrency(transaction.amount, selectedCurrencyCode)}
                   </p>
                   <p className="text-xs text-muted-foreground">{transaction.transactionDate.slice(0, 10)}</p>
                 </div>

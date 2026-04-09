@@ -255,7 +255,7 @@ export function ImportWorkspace({
           <CardHeader>
             <CardTitle>Validation issues</CardTitle>
             <CardDescription>
-              Invalid rows stay visible and skippable. Finance Ledger never saves malformed rows silently.
+              Invalid rows stay visible and skippable. Fin Tracker never saves malformed rows silently.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -320,4 +320,3 @@ export function ImportWorkspace({
     </div>
   );
 }
-

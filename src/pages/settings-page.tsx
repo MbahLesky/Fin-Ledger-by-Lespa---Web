@@ -49,6 +49,7 @@ export function SettingsPage() {
 
   async function handleCurrencyChange(currencyCode: string) {
     await settingsRepository.setCurrency(currencyCode);
+    await accountsRepository.syncDefaultAccountCurrency(currencyCode);
     await saveProfile({
       preferredCurrency: currencyCode
     });
