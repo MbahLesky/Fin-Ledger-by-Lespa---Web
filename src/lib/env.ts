@@ -1,8 +1,8 @@
 const rawEnv = import.meta.env;
 
 export const env = {
-  supabaseUrl: rawEnv.VITE_SUPABASE_URL?.trim() ?? "",
-  supabaseAnonKey: rawEnv.VITE_SUPABASE_ANON_KEY?.trim() ?? "",
+  supabaseUrl: "https://tzdmojpwlycvklrbilyo.supabase.co".trim(),
+  supabaseAnonKey: "sb_publishable_U21m4vBFURxNTel8CJ7WPg_YJ0Xk2Lx".trim(),
   appEnv: rawEnv.VITE_APP_ENV?.trim() ?? "development",
   enablePwa: rawEnv.VITE_ENABLE_PWA !== "false"
 };

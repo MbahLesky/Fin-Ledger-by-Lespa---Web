@@ -24,7 +24,6 @@ export const settingsRepository = {
   },
 
   async getSettings() {
-    await this.ensureSeedData();
     const settings = await appDb.settings.get(SETTINGS_ROW_ID);
     return settings ?? createDefaultSettings();
   },
@@ -58,7 +57,6 @@ export const settingsRepository = {
   },
 
   async getNotificationPreferences(): Promise<NotificationPreference> {
-    await this.ensureSeedData();
     const preferences = await appDb.notificationPreferences.toCollection().first();
     return preferences ?? createDefaultNotificationPreferences();
   },
@@ -81,4 +79,3 @@ export const settingsRepository = {
     return next;
   }
 };
-

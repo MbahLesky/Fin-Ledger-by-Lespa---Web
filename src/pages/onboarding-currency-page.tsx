@@ -21,7 +21,7 @@ export function OnboardingCurrencyPage() {
     });
   }
 
-  async function continueTo(path: string) {
+  function continueTo(path: string) {
     if (!settings?.currencyCode) {
       toast.error("Choose a currency before you continue.");
       return;
