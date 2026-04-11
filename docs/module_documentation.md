@@ -27,6 +27,7 @@ This document defines the application modules for the web version of Finance Led
 | Accounts | Default/custom account management and account-derived balance context |
 | Categories | System/custom category management and type-aware category usage |
 | Transactions | Create, edit, delete, filter, and persist ledger records |
+| Transfers | Move funds across owned accounts without misclassifying transfer amount as income/expense |
 | Dashboard | Derived balance and activity summaries |
 | Analytics | Derived charts and trends from stored transactions |
 | Import/Export | CSV parsing, validation, mapping, commit/export flows, and local history |
@@ -106,6 +107,17 @@ Responsibilities:
 - preserve source metadata such as CSV import references
 - remain the ledger source of truth for totals, reports, and charts
 
+### Transfers Module
+
+Responsibilities:
+
+- create and soft-delete account-to-account transfers
+- validate source and destination account constraints
+- enforce source balance checks for `amount + fee`
+- keep transfer amount separate from income and expense transactions
+- expose transfer rows in history with dedicated UI semantics
+- feed account balance derivation and fee-aware expense analytics
+
 ### Dashboard Module
 
 Responsibilities:
@@ -170,6 +182,7 @@ Responsibilities:
 - Sync depends on Local Persistence, Backend Integration, and Authentication.
 - Import/Export depends on Accounts, Categories, Transactions, and Local Persistence.
 - Dashboard and Analytics depend on derived queries, not stored summary tables.
+- Transfers depends on Accounts for validation and balance updates, and feeds Dashboard/Analytics derivations.
 - Onboarding and Settings share the same settings, accounts, and reminder persistence.
 - Profile metadata can reflect onboarding and preferred currency without moving ledger source data out of the local-first model.
 - Import/export history remains operational and local-only.
@@ -183,4 +196,4 @@ Responsibilities:
 
 ## Summary
 
-The module boundaries still reflect the same Finance Ledger product: auth, onboarding, accounts, categories, transactions, analytics, reminders, and CSV portability. What changes is the delivery model: React pages, Dexie local storage, a dedicated sync engine, and Supabase-backed authentication and continuity.
+The module boundaries still reflect the same Finance Ledger product: auth, onboarding, accounts, categories, transactions, transfers, analytics, reminders, and CSV portability. What changes is the delivery model: React pages, Dexie local storage, a dedicated sync engine, and Supabase-backed authentication and continuity.

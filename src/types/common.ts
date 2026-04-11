@@ -1,6 +1,7 @@
 export type SyncStatus = "pending" | "synced" | "failed";
 
 export type TransactionType = "income" | "expense";
+export type LedgerEntryType = TransactionType | "transfer";
 
 export type ThemeMode = "light" | "dark" | "system";
 
@@ -16,6 +17,7 @@ export type SyncEntityName =
   | "accounts"
   | "categories"
   | "transactions"
+  | "transfers"
   | "settings"
   | "notificationPreferences";
 
@@ -38,4 +40,3 @@ export interface AsyncState<T> {
   isLoading: boolean;
   error: string | null;
 }
-

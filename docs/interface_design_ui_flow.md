@@ -28,6 +28,7 @@ Primary destinations:
 - Dashboard
 - Transactions
 - Add Transaction
+- Transfer Money
 - Analytics
 - Settings / Profile
 
@@ -160,17 +161,24 @@ Purpose:
 Elements:
 
 - search
-- type filter
+- type filter (`income`, `expense`, `transfer`)
 - category filter
 - account filter
 - date filter
-- transaction list or table
+- transaction and transfer list or table
 
 Actions:
 
-- open detail panel or page
-- edit from row actions
+- open detail panel or page for transaction edits
+- edit transaction rows
 - delete with confirmation
+
+Transfer row behavior:
+
+- transfer rows are visually distinct from income and expense rows
+- transfer rows show path such as `Cash -> MoMo`
+- transfer rows show amount, optional fee, date, and note
+- transfer rows are never labeled as income or expense
 
 Empty-state behavior:
 
@@ -196,6 +204,37 @@ Layout:
 - note field
 - date selector
 - save action
+
+### Transfer Money View
+
+Purpose:
+
+- move funds between user-owned accounts without misclassifying the movement as income or expense
+
+Layout:
+
+- from account selector
+- to account selector
+- amount input
+- optional fee input
+- date selector
+- note input
+- transfer summary preview (total debit from source)
+- save transfer action
+
+Validation behavior:
+
+- source and destination accounts must be different
+- amount must be greater than zero
+- fee must be zero or greater
+- source account must have enough available balance for `amount + fee`
+- submit action remains disabled while invalid
+
+Feedback behavior:
+
+- inline validation messages
+- loading state while saving
+- success toast after local save
 
 ### Analytics Page
 
@@ -259,6 +298,7 @@ MVP flow:
 - Google sign-in or sign-up option tapped: Login/Register -> Google button -> coming-soon message -> user stays in auth flow and uses email instead
 - returning user with session: App load -> session restore -> profile check -> onboarding if incomplete or dashboard if ready
 - daily use: Open app or installed PWA -> dashboard -> add transaction or review history -> analytics/settings as needed
+- transfer money: Dashboard/Transactions -> Transfer Money -> choose accounts and amount -> optional fee -> save -> balances and history refresh from local data
 - later manual import: Settings -> Import data -> choose CSV -> preview and map -> confirm import -> updated ledger
 - export backup: Settings -> Export data -> generate CSV -> download file
 - sign out: Settings -> Log out -> Supabase session cleared -> login page
@@ -275,6 +315,7 @@ MVP flow:
 - profile completion should be brief and only shown when required
 - sync should remain a background system until the user needs retry or status visibility
 - desktop layouts may show more data density, but the feature flow must match the mobile-width experience
+- transfer interactions must stay consistent with the mobile product flow and data semantics
 
 ## Future Extensions
 

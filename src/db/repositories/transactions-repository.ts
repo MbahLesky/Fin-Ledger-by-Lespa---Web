@@ -50,6 +50,7 @@ export const transactionsRepository = {
         return {
           ...transaction,
           accountName: account?.name ?? "Unknown account",
+          accountCurrencyCode: account?.currencyCode ?? "USD",
           categoryName: category?.name ?? "Unknown category",
           categoryColorKey: category?.colorKey ?? null
         };

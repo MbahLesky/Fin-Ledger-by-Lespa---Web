@@ -36,6 +36,7 @@ React auth pages
 - `accounts`
 - `categories`
 - `transactions`
+- `transfers`
 - `settings`
 - `notification_preferences`
 
@@ -55,6 +56,7 @@ React auth pages
 - `accounts`
 - `categories`
 - `transactions`
+- `transfers`
 - `settings`
 - `notification_preferences`
 
@@ -115,7 +117,7 @@ Key fields:
 Rules:
 
 - `default-cash` and `default-bank` remain controlled defaults
-- current balance is derived from `initial_balance` plus transactions
+- current balance is derived from `initial_balance` plus transactions and transfers
 - local writes are immediate, even while offline
 
 ### Local: `categories`
@@ -177,6 +179,38 @@ Rules:
 - amount is stored as a positive number
 - `reference` may capture source metadata such as `Imported from records.csv`
 - soft delete is preferred so offline and remote reconciliation can remain consistent
+
+### Local: `transfers`
+
+Purpose:
+
+- stores account-to-account transfer records without classifying transfer amount as income or expense
+
+Key fields:
+
+- `id`
+- `remote_id`
+- `user_id`
+- `from_account_id`
+- `to_account_id`
+- `amount`
+- `fee`
+- `note`
+- `transfer_date`
+- `sync_status`
+- `sync_error`
+- `last_synced_at`
+- `created_at`
+- `updated_at`
+- `deleted_at`
+
+Rules:
+
+- transfer amount is stored as a positive number
+- fee is stored as zero or a positive number
+- `from_account_id` and `to_account_id` must be different
+- source account balance must cover `amount + fee`
+- transfer amount does not count as income or expense
 
 ### Local: `settings`
 
@@ -378,6 +412,22 @@ Key fields:
 - `updated_at TIMESTAMPTZ NOT NULL`
 - `deleted_at TIMESTAMPTZ NULL`
 
+### Remote: `transfers`
+
+Key fields:
+
+- `id TEXT NOT NULL`
+- `user_id UUID NOT NULL`
+- `from_account_id TEXT NOT NULL`
+- `to_account_id TEXT NOT NULL`
+- `amount NUMERIC NOT NULL`
+- `fee NUMERIC NOT NULL DEFAULT 0`
+- `note TEXT NOT NULL DEFAULT ''`
+- `transfer_date TIMESTAMPTZ NOT NULL`
+- `created_at TIMESTAMPTZ NOT NULL`
+- `updated_at TIMESTAMPTZ NOT NULL`
+- `deleted_at TIMESTAMPTZ NULL`
+
 ### Remote: `settings`
 
 Key fields:
@@ -407,6 +457,7 @@ Key fields:
 - first run inserts default settings, default accounts, and system categories
 - initialization is idempotent
 - transactions are never seeded
+- transfers are never seeded
 - import/export history starts empty
 - authenticated ownership is attached to syncable rows when a session exists
 - rows remain usable locally even before a remote sync succeeds
@@ -436,4 +487,4 @@ The following stay derived from business tables:
 
 ## Summary
 
-The schema now has three clear layers: local IndexedDB source data, local operational sync history, and remote Supabase continuity tables. The product behavior remains the same, but the storage model is now aligned to an offline-first web application.
+The schema now has three clear layers: local IndexedDB source data, local operational sync history, and remote Supabase continuity tables. The product behavior remains the same with transfers added as a first-class ledger entity aligned to offline-first web application behavior.

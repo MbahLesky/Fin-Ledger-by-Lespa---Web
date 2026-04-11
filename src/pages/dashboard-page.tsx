@@ -1,5 +1,6 @@
 import { useLiveQuery } from "dexie-react-hooks";
 import {
+  ArrowRightLeft,
   ArrowRight,
   ChartPie,
   CreditCard,
@@ -89,6 +90,10 @@ export function DashboardPage() {
             <CardTitle>Quick actions</CardTitle>
           </CardHeader>
           <CardContent className="grid gap-3 sm:grid-cols-2">
+            <Button variant="outline" className="justify-between" onClick={() => navigate(ROUTES.transfer)}>
+              Transfer money
+              <ArrowRightLeft className="size-4" />
+            </Button>
             <Button variant="outline" className="justify-between" onClick={() => navigate(ROUTES.transactions)}>
               History
               <ArrowRight className="size-4" />
@@ -120,9 +125,9 @@ export function DashboardPage() {
                   <p className="text-xs text-muted-foreground capitalize">{account.type.replace("_", " ")}</p>
                 </div>
                 <div className="text-right">
-                  <p className="font-semibold">{formatCurrency(account.currentBalance, selectedCurrencyCode)}</p>
+                  <p className="font-semibold">{formatCurrency(account.currentBalance, account.currencyCode)}</p>
                   <p className="text-xs text-muted-foreground">
-                    Opening {formatCurrency(account.initialBalance, selectedCurrencyCode)}
+                    Opening {formatCurrency(account.initialBalance, account.currencyCode)}
                   </p>
                 </div>
               </div>
@@ -151,7 +156,7 @@ export function DashboardPage() {
                 <div className="text-right">
                   <p className={`font-semibold ${transaction.type === "income" ? "text-secondary" : "text-accent"}`}>
                     {transaction.type === "income" ? "+" : "-"}
-                    {formatCurrency(transaction.amount, selectedCurrencyCode)}
+                    {formatCurrency(transaction.amount, transaction.accountCurrencyCode)}
                   </p>
                   <p className="text-xs text-muted-foreground">{transaction.transactionDate.slice(0, 10)}</p>
                 </div>

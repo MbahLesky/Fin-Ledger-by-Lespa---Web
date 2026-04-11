@@ -1,9 +1,15 @@
 import { format, parseISO, startOfMonth } from "date-fns";
+import { getOptionalTable } from "@/db/dexie";
 import { transactionsRepository } from "@/db/repositories/transactions-repository";
+import type { TransferRecord } from "@/types";
 
 export const analyticsService = {
   async getSnapshots() {
-    const transactions = await transactionsRepository.listWithRelations();
+    const transfersTable = getOptionalTable<TransferRecord>("transfers");
+    const [transactions, transfers] = await Promise.all([
+      transactionsRepository.listWithRelations(),
+      transfersTable ? transfersTable.toArray() : Promise.resolve([])
+    ]);
 
     const monthlyTrendMap = new Map<string, { label: string; income: number; expense: number }>();
     const categoryBreakdownMap = new Map<string, number>();
@@ -30,6 +36,22 @@ export const analyticsService = {
       monthlyTrendMap.set(monthKey, bucket);
     });
 
+    transfers
+      .filter((transfer) => !transfer.deletedAt && transfer.fee > 0)
+      .forEach((transfer) => {
+        const monthKey = format(startOfMonth(parseISO(transfer.transferDate)), "yyyy-MM");
+        const label = format(parseISO(transfer.transferDate), "MMM yyyy");
+        const bucket = monthlyTrendMap.get(monthKey) ?? {
+          label,
+          income: 0,
+          expense: 0
+        };
+
+        bucket.expense += transfer.fee;
+        categoryBreakdownMap.set("Transfer fees", (categoryBreakdownMap.get("Transfer fees") ?? 0) + transfer.fee);
+        monthlyTrendMap.set(monthKey, bucket);
+      });
+
     const monthlyTrend = Array.from(monthlyTrendMap.entries())
       .sort(([left], [right]) => left.localeCompare(right))
       .map(([, value]) => value);
@@ -47,7 +69,8 @@ export const analyticsService = {
         .reduce((sum, transaction) => sum + transaction.amount, 0),
       expense: transactions
         .filter((transaction) => transaction.type === "expense")
-        .reduce((sum, transaction) => sum + transaction.amount, 0)
+        .reduce((sum, transaction) => sum + transaction.amount, 0) +
+        transfers.filter((transfer) => !transfer.deletedAt).reduce((sum, transfer) => sum + transfer.fee, 0)
     };
 
     return {

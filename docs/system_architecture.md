@@ -111,7 +111,7 @@ PWA manifest
 | React UI | Render pages, forms, tables, charts, and empty states |
 | Route Guards | Direct users through signed-out, profile completion, onboarding, and main app states |
 | Zustand Stores | Expose app-facing state and coordinate workflows without making UI components own data rules |
-| Dexie Database | Persist accounts, categories, transactions, settings, reminders, import/export history, and sync metadata locally |
+| Dexie Database | Persist accounts, categories, transactions, transfers, settings, reminders, import/export history, and sync metadata locally |
 | Sync Engine | Queue local mutations, push pending changes, pull remote changes, and update sync status |
 | Supabase Auth Service | Sign up, sign in, sign out, and restore browser sessions |
 | Profile Service | Create, read, and update `public.profiles` |
@@ -125,6 +125,7 @@ PWA manifest
 - accounts
 - categories
 - transactions
+- transfers
 - settings
 - notification preferences
 
@@ -140,6 +141,7 @@ These records are readable and writable offline in IndexedDB and are the runtime
 - `accounts`
 - `categories`
 - `transactions`
+- `transfers`
 - `settings`
 - `notification_preferences`
 
@@ -159,7 +161,7 @@ These tables mirror syncable business records for authenticated cloud continuity
 - account balances
 - recent activity
 
-Derived data is computed from transactions and related entities, not stored as canonical source tables.
+Derived data is computed from transactions, transfers, and related entities, not stored as canonical source tables.
 
 ## Offline-First Behavior
 

@@ -1,4 +1,4 @@
-import type { SyncableEntity, TransactionType } from "@/types/common";
+import type { LedgerEntryType, SyncableEntity, TransactionType } from "@/types/common";
 
 export interface TransactionRecord extends SyncableEntity {
   accountId: string;
@@ -12,7 +12,7 @@ export interface TransactionRecord extends SyncableEntity {
 
 export interface TransactionFilters {
   query: string;
-  type: TransactionType | "all";
+  type: LedgerEntryType | "all";
   categoryId: string | "all";
   accountId: string | "all";
   range: "all" | "today" | "7d" | "30d" | "custom";
@@ -22,7 +22,7 @@ export interface TransactionFilters {
 
 export interface TransactionListItem extends TransactionRecord {
   accountName: string;
+  accountCurrencyCode: string;
   categoryName: string;
   categoryColorKey?: string | null;
 }
-

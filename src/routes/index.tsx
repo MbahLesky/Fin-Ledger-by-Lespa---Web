@@ -15,6 +15,7 @@ import { PhoneAuthPage } from "@/pages/phone-auth-page";
 import { ProfileCompletionPage } from "@/pages/profile-completion-page";
 import { RegisterPage } from "@/pages/register-page";
 import { SettingsPage } from "@/pages/settings-page";
+import { TransferPage } from "@/pages/transfer-page";
 import { TransactionsPage } from "@/pages/transactions-page";
 import { AuthRoute } from "@/routes/auth-route";
 import { OnboardingRoute } from "@/routes/onboarding-route";
@@ -94,6 +95,10 @@ const router = createBrowserRouter([
             element: <AddTransactionPage />
           },
           {
+            path: ROUTES.transfer,
+            element: <TransferPage />
+          },
+          {
             path: ROUTES.analytics,
             element: <AnalyticsPage />
           },
@@ -122,4 +127,3 @@ const router = createBrowserRouter([
 export function AppRouter() {
   return <RouterProvider router={router} />;
 }
-

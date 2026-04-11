@@ -1,4 +1,4 @@
-import { Download, LayoutDashboard, LineChart, Plus, ReceiptText, Settings2 } from "lucide-react";
+import { ArrowRightLeft, Download, LayoutDashboard, LineChart, Plus, ReceiptText, Settings2 } from "lucide-react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { BrandLogo } from "@/components/navigation/brand-logo";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,11 @@ const navigationItems = [
     label: "Transactions",
     icon: ReceiptText,
     to: ROUTES.transactions
+  },
+  {
+    label: "Transfer",
+    icon: ArrowRightLeft,
+    to: ROUTES.transfer
   },
   {
     label: "Analytics",
@@ -111,7 +116,7 @@ export function AppShell() {
       </div>
 
       <nav className="fixed inset-x-4 bottom-4 z-40 rounded-2xl border border-border/80 bg-card/95 p-2 shadow-card backdrop-blur lg:hidden">
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-5 gap-2">
           {navigationItems.map((item) => (
             <NavLink
               key={item.to}

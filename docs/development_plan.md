@@ -95,6 +95,7 @@ Status: planned
 Deliverables:
 
 - create, edit, soft-delete, filter, and search transaction flows
+- transfer money flow with account-to-account movement and fee handling
 - account and category management
 - onboarding balance setup
 - reminder preference persistence
@@ -104,6 +105,7 @@ Success indicators:
 
 - all core finance interactions work without network dependency
 - transaction history updates immediately after local writes
+- transfer history and account balances update immediately after local writes
 - filters and summaries stay consistent after edits and deletes
 
 ### Phase 5: CSV Import / Export Portability
@@ -218,11 +220,12 @@ Success indicators:
 3. Dashboard, transactions, analytics, and settings pages
 4. Dexie local schema and repositories
 5. Offline CRUD flows and onboarding persistence
-6. Supabase integration and profile provisioning
-7. Sync engine and reconnect handling
-8. Reports and charts
-9. PWA manifest and service-worker caching
-10. Polish, testing, and deployment
+6. Transfer module integration across balances, history, and analytics
+7. Supabase integration and profile provisioning
+8. Sync engine and reconnect handling
+9. Reports and charts
+10. PWA manifest and service-worker caching
+11. Polish, testing, and deployment
 
 ## Risks to Watch
 

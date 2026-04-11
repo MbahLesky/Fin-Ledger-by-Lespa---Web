@@ -1,7 +1,7 @@
-import { appDb } from "@/db/dexie";
+import { appDb, getOptionalTable } from "@/db/dexie";
 import { createDefaultAccounts } from "@/db/seed/default-records";
 import { settingsRepository } from "@/db/repositories/settings-repository";
-import type { Account, AccountBalanceSnapshot, AccountType, TransactionRecord } from "@/types";
+import type { Account, AccountBalanceSnapshot, AccountType, TransactionRecord, TransferRecord } from "@/types";
 import { nowIso } from "@/utils/date-utils";
 import { createId } from "@/utils/id";
 import { syncRepository } from "@/db/repositories/sync-repository";
@@ -14,8 +14,14 @@ async function ensureDefaultAccounts() {
   }
 }
 
-function calculateBalanceForAccount(account: Account, transactions: TransactionRecord[]) {
+function calculateBalanceForAccount(
+  account: Account,
+  transactions: TransactionRecord[],
+  transfers: TransferRecord[]
+) {
   const accountTransactions = transactions.filter((item) => item.accountId === account.id && !item.deletedAt);
+  const outgoingTransfers = transfers.filter((item) => item.fromAccountId === account.id && !item.deletedAt);
+  const incomingTransfers = transfers.filter((item) => item.toAccountId === account.id && !item.deletedAt);
 
   const incomeTotal = accountTransactions
     .filter((item) => item.type === "income")
@@ -23,9 +29,16 @@ function calculateBalanceForAccount(account: Account, transactions: TransactionR
   const expenseTotal = accountTransactions
     .filter((item) => item.type === "expense")
     .reduce((sum, item) => sum + item.amount, 0);
+  const outgoingTransferTotal = outgoingTransfers.reduce((sum, item) => sum + item.amount + item.fee, 0);
+  const incomingTransferTotal = incomingTransfers.reduce((sum, item) => sum + item.amount, 0);
 
   return {
-    currentBalance: account.initialBalance + incomeTotal - expenseTotal,
+    currentBalance:
+      account.initialBalance +
+      incomeTotal -
+      expenseTotal -
+      outgoingTransferTotal +
+      incomingTransferTotal,
     incomeTotal,
     expenseTotal
   };
@@ -40,11 +53,16 @@ export const accountsRepository = {
   },
 
   async listWithBalances(): Promise<AccountBalanceSnapshot[]> {
-    const [accounts, transactions] = await Promise.all([this.listActive(), appDb.transactions.toArray()]);
+    const transfersTable = getOptionalTable<TransferRecord>("transfers");
+    const [accounts, transactions, transfers] = await Promise.all([
+      this.listActive(),
+      appDb.transactions.toArray(),
+      transfersTable ? transfersTable.toArray() : Promise.resolve([])
+    ]);
 
     return accounts.map((account) => ({
       ...account,
-      ...calculateBalanceForAccount(account, transactions)
+      ...calculateBalanceForAccount(account, transactions, transfers)
     }));
   },
 

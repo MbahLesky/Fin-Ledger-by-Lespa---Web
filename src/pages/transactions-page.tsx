@@ -1,6 +1,6 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { Filter, Pencil, Plus, Search, Trash2 } from "lucide-react";
+import { ArrowRightLeft, Filter, Pencil, Plus, Search, Trash2 } from "lucide-react";
 import { EmptyState } from "@/components/data-display/empty-state";
 import {
   AlertDialog,
@@ -14,6 +14,7 @@ import {
   AlertDialogTrigger
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { PageShell } from "@/components/layout/page-shell";
@@ -21,6 +22,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { accountsRepository } from "@/db/repositories/accounts-repository";
 import { categoriesRepository } from "@/db/repositories/categories-repository";
+import { historyRepository } from "@/db/repositories/history-repository";
+import { transfersRepository } from "@/db/repositories/transfers-repository";
 import { settingsRepository } from "@/db/repositories/settings-repository";
 import { transactionsRepository } from "@/db/repositories/transactions-repository";
 import { TransactionForm } from "@/features/transactions/transaction-form";
@@ -37,25 +40,31 @@ export function TransactionsPage() {
   const setFilters = useTransactionFiltersStore((state) => state.setFilters);
   const accounts = useLiveQuery(() => accountsRepository.listActive(), []);
   const categories = useLiveQuery(() => categoriesRepository.listActive(), []);
+  const historyItems = useLiveQuery(() => historyRepository.listWithRelations(filters), [filters]);
   const settings = useLiveQuery(() => settingsRepository.getSettings(), []);
-  const transactions = useLiveQuery(() => transactionsRepository.listWithRelations(filters), [filters]);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const selectedCurrencyCode = settings?.currencyCode ?? "USD";
-
-  const editingTransaction = useMemo(
-    () => transactions?.find((transaction) => transaction.id === editingId),
-    [editingId, transactions]
+  const editingTransaction = useLiveQuery(
+    () => (editingId ? transactionsRepository.getById(editingId) : undefined),
+    [editingId]
   );
+  const selectedCurrencyCode = settings?.currencyCode ?? "USD";
+  const hasRows = (historyItems ?? []).length > 0;
 
   return (
     <PageShell
       title="Transactions"
       description="Search, filter, edit, and remove transaction history while the ledger remains local-first."
       action={
-        <Button onClick={() => navigate(ROUTES.addTransaction)}>
-          <Plus className="size-4" />
-          Add transaction
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => navigate(ROUTES.transfer)}>
+            <ArrowRightLeft className="size-4" />
+            Transfer
+          </Button>
+          <Button onClick={() => navigate(ROUTES.addTransaction)}>
+            <Plus className="size-4" />
+            Add transaction
+          </Button>
+        </div>
       }
     >
       <div className="grid gap-4 rounded-xl border border-border/70 bg-card p-4 md:grid-cols-2 xl:grid-cols-5">
@@ -63,13 +72,21 @@ export function TransactionsPage() {
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             className="pl-9"
-            placeholder="Search note, account, or category"
+            placeholder="Search note, account, category, or transfer path"
             value={filters.query}
             onChange={(event) => setFilters({ query: event.target.value })}
           />
         </div>
 
-        <Select value={filters.type} onValueChange={(value) => setFilters({ type: value as typeof filters.type })}>
+        <Select
+          value={filters.type}
+          onValueChange={(value) =>
+            setFilters({
+              type: value as typeof filters.type,
+              ...(value === "transfer" ? { categoryId: "all" as const } : {})
+            })
+          }
+        >
           <SelectTrigger>
             <SelectValue placeholder="Type" />
           </SelectTrigger>
@@ -77,15 +94,17 @@ export function TransactionsPage() {
             <SelectItem value="all">All types</SelectItem>
             <SelectItem value="income">Income</SelectItem>
             <SelectItem value="expense">Expense</SelectItem>
+            <SelectItem value="transfer">Transfer</SelectItem>
           </SelectContent>
         </Select>
 
         <Select
           value={filters.categoryId}
           onValueChange={(value) => setFilters({ categoryId: value as typeof filters.categoryId })}
+          disabled={filters.type === "transfer"}
         >
           <SelectTrigger>
-            <SelectValue placeholder="Category" />
+            <SelectValue placeholder={filters.type === "transfer" ? "Category not used" : "Category"} />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All categories</SelectItem>
@@ -132,11 +151,11 @@ export function TransactionsPage() {
         </div>
       </div>
 
-      {(transactions ?? []).length === 0 ? (
+      {!hasRows ? (
         <EmptyState
           icon={Filter}
-          title="No transactions match the current view"
-          description="Try another filter, add your first transaction, or import a CSV to populate the ledger."
+          title="No ledger records match the current view"
+          description="Try another filter, add your first transaction, create a transfer, or import a CSV to populate the ledger."
           actionLabel="Add transaction"
           onAction={() => navigate(ROUTES.addTransaction)}
         />
@@ -146,32 +165,52 @@ export function TransactionsPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Date</TableHead>
-                <TableHead>Category</TableHead>
-                <TableHead>Account</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Category / Path</TableHead>
+                <TableHead>Account scope</TableHead>
                 <TableHead>Note</TableHead>
                 <TableHead>Amount</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {transactions?.map((transaction) => (
-                <TableRow key={transaction.id}>
-                  <TableCell className="font-medium">{transaction.transactionDate.slice(0, 10)}</TableCell>
-                  <TableCell>{transaction.categoryName}</TableCell>
-                  <TableCell>{transaction.accountName}</TableCell>
-                  <TableCell className="max-w-xs truncate text-muted-foreground">
-                    {transaction.note || "No note"}
+              {historyItems?.map((item) => (
+                <TableRow key={`${item.kind}-${item.id}`}>
+                  <TableCell className="font-medium">{item.occurredAt.slice(0, 10)}</TableCell>
+                  <TableCell>
+                    {item.entryType === "income" ? (
+                      <Badge variant="success">Income</Badge>
+                    ) : item.entryType === "expense" ? (
+                      <Badge variant="accent">Expense</Badge>
+                    ) : (
+                      <Badge variant="default" className="gap-1">
+                        <ArrowRightLeft className="size-3" />
+                        Transfer
+                      </Badge>
+                    )}
                   </TableCell>
-                  <TableCell className={transaction.type === "income" ? "text-secondary" : "text-accent"}>
-                    {transaction.type === "income" ? "+" : "-"}
-                    {formatCurrency(transaction.amount, selectedCurrencyCode)}
+                  <TableCell>{item.categoryLabel ?? "-"}</TableCell>
+                  <TableCell>{item.accountLabel}</TableCell>
+                  <TableCell className="max-w-xs truncate text-muted-foreground">
+                    {item.note || "No note"}
+                  </TableCell>
+                  <TableCell className={item.entryType === "income" ? "text-secondary" : item.entryType === "expense" ? "text-accent" : ""}>
+                    {item.entryType === "income" ? "+" : item.entryType === "expense" ? "-" : ""}
+                    {formatCurrency(item.amount, item.currencyCode || selectedCurrencyCode)}
+                    {item.kind === "transfer" && item.fee > 0 ? (
+                      <p className="text-xs text-muted-foreground">
+                        Fee {formatCurrency(item.fee, item.currencyCode || selectedCurrencyCode)}
+                      </p>
+                    ) : null}
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
-                      <Button variant="ghost" size="sm" onClick={() => setEditingId(transaction.id)}>
-                        <Pencil className="size-4" />
-                        Edit
-                      </Button>
+                      {item.kind === "transaction" ? (
+                        <Button variant="ghost" size="sm" onClick={() => setEditingId(item.id)}>
+                          <Pencil className="size-4" />
+                          Edit
+                        </Button>
+                      ) : null}
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
                           <Button variant="ghost" size="sm" className="text-accent hover:text-accent">
@@ -188,7 +227,13 @@ export function TransactionsPage() {
                           </AlertDialogHeader>
                           <AlertDialogFooter>
                             <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => void transactionsRepository.softDelete(transaction.id)}>
+                            <AlertDialogAction
+                              onClick={() =>
+                                void (item.kind === "transaction"
+                                  ? transactionsRepository.softDelete(item.id)
+                                  : transfersRepository.softDelete(item.id))
+                              }
+                            >
                               Delete
                             </AlertDialogAction>
                           </AlertDialogFooter>

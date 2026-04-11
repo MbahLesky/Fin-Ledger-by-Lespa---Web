@@ -21,6 +21,7 @@ Implementation direction:
 - accounts store opening balances and stay separate from transactions
 - categories classify transactions and support system defaults plus user-defined items
 - transactions remain the financial source of truth for dashboard and analytics
+- transfers move value between accounts and are stored separately from income and expense transactions
 - import and export history stay local for traceability
 - Supabase stores identity, app-level profile information, and synced business records
 - dashboard and analytics remain derived instead of stored as summary tables
@@ -162,6 +163,41 @@ Validation:
 - category must exist and be type-compatible
 - `reference` may preserve origin metadata such as CSV import source
 
+### Transfer
+
+Purpose:
+
+- stores money movement between user-owned accounts without classifying transfer amount as income or expense
+
+Required fields:
+
+- `id`
+- `from_account_id`
+- `to_account_id`
+- `amount`
+- `fee`
+- `transfer_date`
+- `created_at`
+- `updated_at`
+
+Optional fields:
+
+- `remote_id`
+- `user_id`
+- `note`
+- `sync_status`
+- `sync_error`
+- `last_synced_at`
+- `deleted_at`
+
+Validation:
+
+- `from_account_id` must not equal `to_account_id`
+- amount must be numeric and greater than zero
+- fee must be numeric and zero or greater
+- source account balance must cover `amount + fee`
+- transfer amount is excluded from income/expense totals
+
 ### Settings
 
 Purpose:
@@ -296,6 +332,7 @@ Optional fields:
 - `accounts`
 - `categories`
 - `transactions`
+- `transfers`
 - `settings`
 - `notification_preferences`
 

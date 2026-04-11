@@ -1,4 +1,4 @@
-import { appDb } from "@/db/dexie";
+import { appDb, getOptionalTable } from "@/db/dexie";
 import { syncRepository } from "@/db/repositories/sync-repository";
 import { supabase } from "@/lib/supabase-client";
 import type {
@@ -8,6 +8,7 @@ import type {
   NotificationPreference,
   SyncEntityName,
   SyncOperationRecord,
+  TransferRecord,
   TransactionRecord
 } from "@/types";
 import { nowIso } from "@/utils/date-utils";
@@ -55,6 +56,15 @@ function getSyncTable(entityName: SyncEntityName) {
     return appDb.transactions;
   }
 
+  if (entityName === "transfers") {
+    const transfersTable = getOptionalTable<TransferRecord>("transfers");
+    if (!transfersTable) {
+      throw new Error("Transfers table is unavailable. Refresh the app and sign in again.");
+    }
+
+    return transfersTable;
+  }
+
   if (entityName === "settings") {
     return appDb.settings;
   }
@@ -70,7 +80,15 @@ function getRemoteTableName(entityName: SyncEntityName) {
   return entityName;
 }
 
-function toRemoteRow(record: Account | Category | TransactionRecord | AppSettings | NotificationPreference) {
+function toRemoteRow(
+  record:
+    | Account
+    | Category
+    | TransactionRecord
+    | TransferRecord
+    | AppSettings
+    | NotificationPreference
+) {
   if ("initialBalance" in record) {
     return {
       id: record.id,
@@ -121,6 +139,22 @@ function toRemoteRow(record: Account | Category | TransactionRecord | AppSetting
     };
   }
 
+  if ("transferDate" in record) {
+    return {
+      id: record.id,
+      user_id: record.userId,
+      from_account_id: record.fromAccountId,
+      to_account_id: record.toAccountId,
+      amount: record.amount,
+      fee: record.fee,
+      note: record.note,
+      transfer_date: record.transferDate,
+      created_at: record.createdAt,
+      updated_at: record.updatedAt,
+      deleted_at: record.deletedAt
+    };
+  }
+
   if ("onboardingComplete" in record) {
     return {
       id: record.id,
@@ -147,7 +181,7 @@ function toRemoteRow(record: Account | Category | TransactionRecord | AppSetting
 function fromRemoteRow(
   entityName: SyncEntityName,
   row: Record<string, unknown>
-): Account | Category | TransactionRecord | AppSettings | NotificationPreference {
+): Account | Category | TransactionRecord | TransferRecord | AppSettings | NotificationPreference {
   if (entityName === "accounts") {
     return {
       id: String(row.id),
@@ -201,6 +235,26 @@ function fromRemoteRow(
       note: String(row.note ?? ""),
       transactionDate: String(row.transaction_date),
       reference: (row.reference as string | null | undefined) ?? null,
+      syncStatus: "synced",
+      syncError: null,
+      lastSyncedAt: nowIso(),
+      createdAt: String(row.created_at),
+      updatedAt: String(row.updated_at),
+      deletedAt: (row.deleted_at as string | null | undefined) ?? null
+    };
+  }
+
+  if (entityName === "transfers") {
+    return {
+      id: String(row.id),
+      remoteId: String(row.id),
+      userId: String(row.user_id),
+      fromAccountId: String(row.from_account_id),
+      toAccountId: String(row.to_account_id),
+      amount: Number(row.amount),
+      fee: Number(row.fee ?? 0),
+      note: String(row.note ?? ""),
+      transferDate: String(row.transfer_date),
       syncStatus: "synced",
       syncError: null,
       lastSyncedAt: nowIso(),
@@ -363,6 +417,7 @@ export const syncEngine = {
       pullTable("accounts", userId),
       pullTable("categories", userId),
       pullTable("transactions", userId),
+      pullTable("transfers", userId),
       pullTable("settings", userId),
       pullTable("notificationPreferences", userId)
     ]);

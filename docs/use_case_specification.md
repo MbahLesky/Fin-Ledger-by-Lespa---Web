@@ -14,6 +14,7 @@ The use cases cover:
 - profile creation and completion
 - transaction entry through the web app and later chatbot channels
 - transaction management
+- account-to-account transfers
 - dashboard and analytics access
 - import and export operations
 
@@ -40,6 +41,7 @@ The use cases cover:
 | UC-12 | Request Financial Summary via Chatbot | User |
 | UC-13 | Export Data | User |
 | UC-14 | Import Data | User |
+| UC-15 | Transfer Money Between Accounts | User |
 
 ## Detailed Use Cases
 
@@ -166,6 +168,15 @@ The use cases cover:
 - **Alternative flows:** Invalid file structure or bad rows are rejected or skipped with clear reporting.
 - **Postconditions:** Valid data is added to the system and dashboards can reflect the update.
 
+### UC-15: Transfer Money Between Accounts
+
+- **Description:** The user moves funds between owned accounts without classifying transfer amount as income or expense.
+- **Preconditions:** The user is authenticated and both source and destination accounts exist.
+- **Trigger:** The user opens the transfer flow.
+- **Main flow:** Open transfer form -> choose source account -> choose destination account -> enter amount and optional fee -> choose date -> optionally add note -> system validates -> transfer is stored locally -> account balances update -> history refreshes.
+- **Alternative flows:** Same account selected for both fields returns validation error; invalid amount or fee returns validation errors; insufficient source balance for `amount + fee` blocks save.
+- **Postconditions:** Transfer record is stored and visible in history; transfer amount does not affect income/expense totals while fee may affect expense-side reporting.
+
 ## Relationship Notes
 
 - UC-01 supports UC-02.
@@ -174,6 +185,7 @@ The use cases cover:
 - UC-04 and UC-05 both feed analytics and dashboard use cases.
 - UC-06 and UC-07 affect summary and analytics outcomes.
 - UC-13 and UC-14 support portability and migration workflows.
+- UC-15 affects account balances and history while preserving income/expense classification rules.
 
 ## Summary
 

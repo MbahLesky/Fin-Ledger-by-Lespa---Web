@@ -11,9 +11,9 @@ export const ROUTES = {
   dashboard: "/dashboard",
   transactions: "/transactions",
   addTransaction: "/transactions/new",
+  transfer: "/transfer",
   analytics: "/analytics",
   settings: "/settings",
   importData: "/settings/import",
   exportData: "/settings/export"
 } as const;
-

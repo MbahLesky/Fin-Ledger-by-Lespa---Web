@@ -47,6 +47,7 @@ This document describes the active components in the Finance Ledger web applicat
 - accounts
 - categories
 - transactions
+- transfers
 - settings
 - notification preferences
 
@@ -60,6 +61,7 @@ This document describes the active components in the Finance Ledger web applicat
 - `accounts`
 - `categories`
 - `transactions`
+- `transfers`
 - `settings`
 - `notification_preferences`
 
@@ -93,6 +95,15 @@ This document describes the active components in the Finance Ledger web applicat
 4. Sync engine records the local mutation for later upload.
 5. Zustand selectors and local queries update the visible state.
 6. Dashboard and analytics recompute from persisted source records.
+
+### Manual Transfer Entry
+
+1. User opens transfer flow from dashboard or transactions area.
+2. Form validation checks account selection, amount, fee, and source balance.
+3. Dexie repository writes the transfer row to IndexedDB.
+4. Sync engine records the local mutation for later upload.
+5. Account balances recompute locally from transactions plus transfers.
+6. History and analytics refresh with transfer-safe semantics.
 
 ### Onboarding and Settings
 
