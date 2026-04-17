@@ -60,7 +60,7 @@ export function AnalyticsPage() {
         <EmptyState
           icon={LineChartIcon}
           title="Analytics will appear as soon as you have data"
-          description="Add transactions or import a CSV first. Fin Tracker handles empty analytics safely and keeps the starter state useful."
+          description="Add transactions or import a CSV first. MoniLog handles empty analytics safely and keeps the starter state useful."
         />
       </PageShell>
     );

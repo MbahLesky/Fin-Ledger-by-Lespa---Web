@@ -1,8 +1,12 @@
 import type { AccountType } from "@/types/common";
 
-export const APP_NAME = "Fin Tracker";
+export const APP_NAME = "MoniLog";
 
-export const APP_TAGLINE = "Make financial tracking as easy as sending a message.";
+export const APP_LONG_NAME = "MoniLog finance tracker";
+
+export const APP_SUPPORT_NAME = "Finance tracker";
+
+export const APP_TAGLINE = "Track your every dime";
 
 export const DEFAULT_ACCOUNTS: Array<{
   name: string;

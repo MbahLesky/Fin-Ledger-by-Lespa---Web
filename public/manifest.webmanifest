@@ -1,7 +1,7 @@
 {
-  "name": "Fin Tracker",
-  "short_name": "Fin Tracker",
-  "description": "Track income, expenses, and balances offline first with calm, clear financial insight.",
+  "name": "MoniLog finance tracker",
+  "short_name": "MoniLog",
+  "description": "Track your every dime.",
   "theme_color": "#173B7A",
   "background_color": "#F3F6FB",
   "display": "standalone",

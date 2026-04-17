@@ -34,7 +34,7 @@ export function TransferPage() {
               <CardTitle className="text-primary-foreground">How transfers affect balances</CardTitle>
             </div>
             <CardDescription className="text-primary-foreground/84">
-              Fin Tracker keeps transfers separate from income and expense records while preserving accurate balances.
+              MoniLog keeps transfers separate from income and expense records while preserving accurate balances.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3 text-sm leading-6 text-primary-foreground/88">

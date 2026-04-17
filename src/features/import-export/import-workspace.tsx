@@ -255,7 +255,7 @@ export function ImportWorkspace({
           <CardHeader>
             <CardTitle>Validation issues</CardTitle>
             <CardDescription>
-              Invalid rows stay visible and skippable. Fin Tracker never saves malformed rows silently.
+              Invalid rows stay visible and skippable. MoniLog never saves malformed rows silently.
             </CardDescription>
           </CardHeader>
           <CardContent>

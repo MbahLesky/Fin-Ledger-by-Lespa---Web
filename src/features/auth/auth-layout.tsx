@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { WalletCards } from "lucide-react";
 import { BrandLogo } from "@/components/navigation/brand-logo";
 import { Card, CardContent } from "@/components/ui/card";
+import { APP_LONG_NAME, APP_TAGLINE } from "@/lib/constants";
 
 interface AuthLayoutProps {
   eyebrow: string;
@@ -20,10 +21,10 @@ export function AuthLayout({ eyebrow, title, description, children }: AuthLayout
             <div className="max-w-xl space-y-4">
               <p className="text-sm font-semibold uppercase tracking-[0.22em] text-secondary">{eyebrow}</p>
               <h1 className="text-5xl font-bold leading-tight">
-                Make sense of every balance shift without losing your calm.
+                {APP_TAGLINE}.
               </h1>
               <p className="text-base leading-7 text-muted-foreground">
-                Fin Tracker is designed for clear capture, shared Supabase-backed data, and a
+                {APP_LONG_NAME} is designed for clear capture, shared Supabase-backed data, and a
                 polished money workflow across web and mobile.
               </p>
             </div>

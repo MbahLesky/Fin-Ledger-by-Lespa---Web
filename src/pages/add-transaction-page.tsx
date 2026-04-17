@@ -16,7 +16,7 @@ export function AddTransactionPage() {
           <CardHeader>
             <CardTitle>Manual entry</CardTitle>
             <CardDescription>
-              Amount, type, category, account, note, and date are validated before Fin Tracker saves to the backend.
+              Amount, type, category, account, note, and date are validated before MoniLog saves to the backend.
             </CardDescription>
           </CardHeader>
           <CardContent>
