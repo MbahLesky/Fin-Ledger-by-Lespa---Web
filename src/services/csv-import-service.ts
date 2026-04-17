@@ -15,8 +15,6 @@ import { createId } from "@/utils/id";
 import { nowIso } from "@/utils/date-utils";
 
 const REQUIRED_HEADERS = ["date", "type", "amount", "account"] as const;
-const OPTIONAL_HEADERS = ["category", "note"] as const;
-
 function normalizeHeader(value: string) {
   return value.trim().toLowerCase();
 }
@@ -317,4 +315,3 @@ export const csvImportService = {
     return record;
   }
 };
-

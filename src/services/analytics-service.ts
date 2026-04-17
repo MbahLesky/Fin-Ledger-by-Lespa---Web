@@ -1,14 +1,12 @@
 import { format, parseISO, startOfMonth } from "date-fns";
-import { getOptionalTable } from "@/db/dexie";
 import { transactionsRepository } from "@/db/repositories/transactions-repository";
-import type { TransferRecord } from "@/types";
+import { transfersRepository } from "@/db/repositories/transfers-repository";
 
 export const analyticsService = {
   async getSnapshots() {
-    const transfersTable = getOptionalTable<TransferRecord>("transfers");
     const [transactions, transfers] = await Promise.all([
       transactionsRepository.listWithRelations(),
-      transfersTable ? transfersTable.toArray() : Promise.resolve([])
+      transfersRepository.listActive()
     ]);
 
     const monthlyTrendMap = new Map<string, { label: string; income: number; expense: number }>();
@@ -37,7 +35,7 @@ export const analyticsService = {
     });
 
     transfers
-      .filter((transfer) => !transfer.deletedAt && transfer.fee > 0)
+      .filter((transfer) => transfer.fee > 0)
       .forEach((transfer) => {
         const monthKey = format(startOfMonth(parseISO(transfer.transferDate)), "yyyy-MM");
         const label = format(parseISO(transfer.transferDate), "MMM yyyy");
@@ -70,7 +68,7 @@ export const analyticsService = {
       expense: transactions
         .filter((transaction) => transaction.type === "expense")
         .reduce((sum, transaction) => sum + transaction.amount, 0) +
-        transfers.filter((transfer) => !transfer.deletedAt).reduce((sum, transfer) => sum + transfer.fee, 0)
+        transfers.reduce((sum, transfer) => sum + transfer.fee, 0)
     };
 
     return {

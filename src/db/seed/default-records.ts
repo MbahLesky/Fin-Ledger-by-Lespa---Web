@@ -1,48 +1,41 @@
-import { DEFAULT_ACCOUNTS, DEFAULT_CATEGORY_SEEDS, DEFAULT_CURRENCY, NOTIFICATION_PREFERENCES_ID, SETTINGS_ROW_ID } from "@/lib/constants";
+import { DEFAULT_ACCOUNTS, DEFAULT_CATEGORY_SEEDS, DEFAULT_CURRENCY } from "@/lib/constants";
 import type { Account, AppSettings, Category, NotificationPreference } from "@/types";
 import { nowIso } from "@/utils/date-utils";
+import { createUuid } from "@/utils/id";
 
-export function createDefaultSettings(): AppSettings {
+export function createDefaultSettings(userId: string): AppSettings {
   const timestamp = nowIso();
 
   return {
-    id: SETTINGS_ROW_ID,
+    id: createUuid(),
     currencyCode: DEFAULT_CURRENCY,
     themeMode: "system",
     onboardingComplete: false,
-    userId: null,
-    remoteId: null,
-    syncStatus: "pending",
-    syncError: null,
-    lastSyncedAt: null,
+    userId,
     createdAt: timestamp,
     updatedAt: timestamp
   };
 }
 
-export function createDefaultNotificationPreferences(): NotificationPreference {
+export function createDefaultNotificationPreferences(userId: string): NotificationPreference {
   const timestamp = nowIso();
 
   return {
-    id: NOTIFICATION_PREFERENCES_ID,
+    id: createUuid(),
     enabled: false,
     reminderTime: "20:00",
     timingMode: "daily",
-    userId: null,
-    remoteId: null,
-    syncStatus: "pending",
-    syncError: null,
-    lastSyncedAt: null,
+    userId,
     createdAt: timestamp,
     updatedAt: timestamp
   };
 }
 
-export function createDefaultAccounts(currencyCode = DEFAULT_CURRENCY): Account[] {
+export function createDefaultAccounts(userId: string, currencyCode = DEFAULT_CURRENCY): Account[] {
   const timestamp = nowIso();
 
   return DEFAULT_ACCOUNTS.map((account) => ({
-    id: account.id,
+    id: createUuid(),
     name: account.name,
     type: account.type,
     initialBalance: 0,
@@ -50,36 +43,27 @@ export function createDefaultAccounts(currencyCode = DEFAULT_CURRENCY): Account[
     isDefault: true,
     isArchived: false,
     displayOrder: account.displayOrder,
-    userId: null,
-    remoteId: null,
-    syncStatus: "pending",
-    syncError: null,
-    lastSyncedAt: null,
+    userId,
     createdAt: timestamp,
     updatedAt: timestamp,
     deletedAt: null
   }));
 }
 
-export function createDefaultCategories(): Category[] {
+export function createDefaultCategories(userId: string): Category[] {
   const timestamp = nowIso();
 
   return DEFAULT_CATEGORY_SEEDS.map((category) => ({
-    id: category.id,
+    id: createUuid(),
     name: category.name,
     type: category.type,
     iconKey: category.iconKey,
     colorKey: category.colorKey,
-    isSystem: true,
+    isSystem: false,
     isActive: true,
-    userId: null,
-    remoteId: null,
-    syncStatus: "pending",
-    syncError: null,
-    lastSyncedAt: null,
+    userId,
     createdAt: timestamp,
     updatedAt: timestamp,
     deletedAt: null
   }));
 }
-

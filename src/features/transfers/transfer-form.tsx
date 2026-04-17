@@ -1,5 +1,4 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useLiveQuery } from "dexie-react-hooks";
 import { useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -11,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { accountsRepository } from "@/db/repositories/accounts-repository";
 import { transfersRepository } from "@/db/repositories/transfers-repository";
 import { transferSchema, type TransferFormValues } from "@/features/transfers/transfer-schema";
+import { useBackendQuery } from "@/hooks/use-backend-query";
 import { toDateInputValue } from "@/utils/date-utils";
 import { formatCurrency } from "@/utils/formatting";
 
@@ -20,7 +20,7 @@ interface TransferFormProps {
 }
 
 export function TransferForm({ userId, onSubmitted }: TransferFormProps) {
-  const accounts = useLiveQuery(() => accountsRepository.listWithBalances(), []);
+  const { data: accounts = [] } = useBackendQuery(() => accountsRepository.listWithBalances(), []);
 
   const form = useForm<TransferFormValues>({
     resolver: zodResolver(transferSchema),
@@ -41,7 +41,7 @@ export function TransferForm({ userId, onSubmitted }: TransferFormProps) {
   const fee = Number(form.watch("fee") ?? 0);
 
   useEffect(() => {
-    if (!accounts?.length) {
+    if (!accounts.length) {
       return;
     }
 
@@ -61,7 +61,7 @@ export function TransferForm({ userId, onSubmitted }: TransferFormProps) {
   }, [accounts, form]);
 
   const fromAccount = useMemo(
-    () => (accounts ?? []).find((account) => account.id === fromAccountId),
+    () => accounts.find((account) => account.id === fromAccountId),
     [accounts, fromAccountId]
   );
 
@@ -87,7 +87,7 @@ export function TransferForm({ userId, onSubmitted }: TransferFormProps) {
         userId
       });
 
-      toast.success("Transfer saved locally.");
+      toast.success("Transfer saved to Supabase.");
       form.reset({
         ...values,
         amount: 0,
@@ -115,7 +115,7 @@ export function TransferForm({ userId, onSubmitted }: TransferFormProps) {
             onValueChange={(value) => {
               form.setValue("fromAccountId", value, { shouldValidate: true });
               if (value === toAccountId) {
-                const fallbackDestination = (accounts ?? []).find((account) => account.id !== value);
+                const fallbackDestination = accounts.find((account) => account.id !== value);
                 form.setValue("toAccountId", fallbackDestination?.id ?? "", { shouldValidate: true });
               }
             }}
@@ -124,7 +124,7 @@ export function TransferForm({ userId, onSubmitted }: TransferFormProps) {
               <SelectValue placeholder="Choose source account" />
             </SelectTrigger>
             <SelectContent>
-              {(accounts ?? []).map((account) => (
+              {accounts.map((account) => (
                 <SelectItem key={account.id} value={account.id}>
                   {account.name} ({formatCurrency(account.currentBalance, account.currencyCode)})
                 </SelectItem>
@@ -142,7 +142,7 @@ export function TransferForm({ userId, onSubmitted }: TransferFormProps) {
               <SelectValue placeholder="Choose destination account" />
             </SelectTrigger>
             <SelectContent>
-              {(accounts ?? [])
+              {accounts
                 .filter((account) => account.id !== fromAccountId)
                 .map((account) => (
                   <SelectItem key={account.id} value={account.id}>
@@ -208,7 +208,7 @@ export function TransferForm({ userId, onSubmitted }: TransferFormProps) {
       <Button
         type="submit"
         isLoading={form.formState.isSubmitting}
-        disabled={!form.formState.isValid || insufficientBalance || (accounts?.length ?? 0) < 2}
+        disabled={!form.formState.isValid || insufficientBalance || accounts.length < 2}
       >
         Save transfer
       </Button>

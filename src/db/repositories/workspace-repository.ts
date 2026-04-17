@@ -1,43 +1,47 @@
-import { appDb, getOptionalTable } from "@/db/dexie";
 import { accountsRepository } from "@/db/repositories/accounts-repository";
+import { auditRepository } from "@/db/repositories/audit-repository";
 import { categoriesRepository } from "@/db/repositories/categories-repository";
 import { settingsRepository } from "@/db/repositories/settings-repository";
-import { syncRepository } from "@/db/repositories/sync-repository";
-import { transfersRepository } from "@/db/repositories/transfers-repository";
-import { transactionsRepository } from "@/db/repositories/transactions-repository";
+import {
+  assertOnlineForSharedWrite,
+  assertSupabaseClient,
+  getAuthenticatedUserId
+} from "@/services/supabase-data-service";
+import { useRealtimeStore } from "@/store/realtime-store";
 
 export const workspaceRepository = {
-  async initialize() {
-    await settingsRepository.ensureSeedData();
-    await accountsRepository.listActive();
-    await categoriesRepository.listActive();
-  },
-
-  async stampOwnership(userId: string) {
+  async initializeForUser(userId?: string) {
+    const ownerId = userId ?? (await getAuthenticatedUserId());
+    await settingsRepository.ensureSeedData(ownerId);
     await Promise.all([
-      accountsRepository.stampOwnership(userId),
-      categoriesRepository.stampOwnership(userId),
-      transactionsRepository.stampOwnership(userId),
-      transfersRepository.stampOwnership(userId),
-      settingsRepository.updateSettings({ userId }),
-      settingsRepository.updateNotificationPreferences({ userId })
+      accountsRepository.ensureDefaults(ownerId),
+      categoriesRepository.ensureDefaults(ownerId)
     ]);
   },
 
   async resetAppData() {
-    const transfersTable = getOptionalTable("transfers");
-    await Promise.all([
-      appDb.accounts.clear(),
-      appDb.categories.clear(),
-      appDb.transactions.clear(),
-      transfersTable ? transfersTable.clear() : Promise.resolve(),
-      appDb.settings.clear(),
-      appDb.notificationPreferences.clear(),
-      appDb.importRecords.clear(),
-      appDb.exportRecords.clear(),
-      syncRepository.clearAll()
-    ]);
+    assertOnlineForSharedWrite();
+    const userId = await getAuthenticatedUserId();
+    const client = assertSupabaseClient();
 
-    await this.initialize();
+    const tables = [
+      "transfers",
+      "transactions",
+      "categories",
+      "accounts",
+      "notification_preferences",
+      "settings"
+    ] as const;
+
+    for (const table of tables) {
+      const { error } = await client.from(table).delete().eq("user_id", userId);
+      if (error) {
+        throw new Error(error.message);
+      }
+    }
+
+    await auditRepository.clearHistory();
+    await this.initializeForUser(userId);
+    useRealtimeStore.getState().markLocalMutation("workspace");
   }
 };

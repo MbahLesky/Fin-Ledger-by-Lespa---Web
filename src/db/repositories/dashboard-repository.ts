@@ -1,8 +1,7 @@
 import { isSameDay, parseISO } from "date-fns";
-import { getOptionalTable } from "@/db/dexie";
 import { accountsRepository } from "@/db/repositories/accounts-repository";
 import { transactionsRepository } from "@/db/repositories/transactions-repository";
-import type { TransferRecord } from "@/types";
+import { transfersRepository } from "@/db/repositories/transfers-repository";
 
 export interface DashboardSnapshot {
   currentBalance: number;
@@ -15,13 +14,11 @@ export interface DashboardSnapshot {
 
 export const dashboardRepository = {
   async getSnapshot(): Promise<DashboardSnapshot> {
-    const transfersTable = getOptionalTable<TransferRecord>("transfers");
     const [accountSummaries, recentTransactions, transfers] = await Promise.all([
       accountsRepository.listWithBalances(),
       transactionsRepository.listWithRelations(),
-      transfersTable ? transfersTable.toArray() : Promise.resolve([])
+      transfersRepository.listActive()
     ]);
-    const activeTransfers = transfers.filter((transfer) => !transfer.deletedAt);
 
     const currentBalance = accountSummaries.reduce((sum, account) => sum + account.currentBalance, 0);
     const totalIncome = recentTransactions
@@ -30,14 +27,14 @@ export const dashboardRepository = {
     const totalExpenses = recentTransactions
       .filter((transaction) => transaction.type === "expense")
       .reduce((sum, transaction) => sum + transaction.amount, 0) +
-      activeTransfers.reduce((sum, transfer) => sum + transfer.fee, 0);
+      transfers.reduce((sum, transfer) => sum + transfer.fee, 0);
     const todaySpending = recentTransactions
       .filter(
         (transaction) =>
           transaction.type === "expense" && isSameDay(parseISO(transaction.transactionDate), new Date())
       )
       .reduce((sum, transaction) => sum + transaction.amount, 0) +
-      activeTransfers
+      transfers
         .filter((transfer) => isSameDay(parseISO(transfer.transferDate), new Date()))
         .reduce((sum, transfer) => sum + transfer.fee, 0);
 

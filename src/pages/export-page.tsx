@@ -1,4 +1,4 @@
-import { useLiveQuery } from "dexie-react-hooks";
+import { useEffect, useState } from "react";
 import { Download, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { auditRepository } from "@/db/repositories/audit-repository";
@@ -7,13 +7,23 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { PageShell } from "@/components/layout/page-shell";
 import { csvExportService } from "@/services/csv-export-service";
 import { formatShortDate } from "@/utils/date-utils";
+import type { ExportRecord } from "@/types";
 
 export function ExportPage() {
-  const exportHistory = useLiveQuery(() => auditRepository.listExports(), []);
+  const [exportHistory, setExportHistory] = useState<ExportRecord[]>([]);
+
+  async function refreshExportHistory() {
+    setExportHistory(await auditRepository.listExports());
+  }
+
+  useEffect(() => {
+    void refreshExportHistory();
+  }, []);
 
   async function handleExport() {
     try {
       await csvExportService.exportTransactions();
+      await refreshExportHistory();
       toast.success("CSV export downloaded.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Unable to export data.");
@@ -23,7 +33,7 @@ export function ExportPage() {
   return (
     <PageShell
       title="Export data"
-      description="Generate a spreadsheet-friendly CSV backup of all active transactions stored in this local workspace."
+      description="Generate a spreadsheet-friendly CSV backup from your shared Supabase transactions."
       action={
         <Button onClick={() => void handleExport()}>
           <Download className="size-4" />
@@ -39,7 +49,7 @@ export function ExportPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="text-sm leading-6 text-muted-foreground">
-          Exports read from IndexedDB, download through the browser, and write only to the local export history.
+          Exports read active Supabase transactions, download through the browser, and store only export history locally on this device.
         </CardContent>
       </Card>
 
@@ -53,7 +63,7 @@ export function ExportPage() {
               No exports yet. Generate your first CSV backup when you are ready.
             </div>
           ) : (
-            exportHistory?.map((item) => (
+            exportHistory.map((item) => (
               <div key={item.id} className="flex items-center justify-between rounded-xl border border-border/70 p-4">
                 <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">

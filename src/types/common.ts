@@ -1,5 +1,3 @@
-export type SyncStatus = "pending" | "synced" | "failed";
-
 export type TransactionType = "income" | "expense";
 export type LedgerEntryType = TransactionType | "transfer";
 
@@ -13,23 +11,9 @@ export type AccountType =
   | "savings"
   | "other";
 
-export type SyncEntityName =
-  | "accounts"
-  | "categories"
-  | "transactions"
-  | "transfers"
-  | "settings"
-  | "notificationPreferences";
-
-export type SyncOperationType = "create" | "update" | "delete";
-
-export interface SyncableEntity {
+export interface SharedEntity {
   id: string;
-  remoteId?: string | null;
-  userId?: string | null;
-  syncStatus: SyncStatus;
-  syncError?: string | null;
-  lastSyncedAt?: string | null;
+  userId: string;
   createdAt: string;
   updatedAt: string;
   deletedAt?: string | null;

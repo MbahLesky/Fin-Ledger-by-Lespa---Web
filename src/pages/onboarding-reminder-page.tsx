@@ -1,4 +1,3 @@
-import { useLiveQuery } from "dexie-react-hooks";
 import { BellRing, CheckCircle2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -10,22 +9,27 @@ import { settingsRepository } from "@/db/repositories/settings-repository";
 import { useReminderPermission } from "@/hooks/use-reminder-permission";
 import { ROUTES } from "@/routes/route-constants";
 import { useAuthStore } from "@/store/auth-store";
+import { useBackendQuery } from "@/hooks/use-backend-query";
 
 export function OnboardingReminderPage() {
   const navigate = useNavigate();
-  const preferences = useLiveQuery(() => settingsRepository.getNotificationPreferences(), []);
-  const settings = useLiveQuery(() => settingsRepository.getSettings(), []);
+  const { data: preferences } = useBackendQuery(() => settingsRepository.getNotificationPreferences(), []);
+  const { data: settings } = useBackendQuery(() => settingsRepository.getSettings(), []);
   const { permission, requestPermission } = useReminderPermission();
   const saveProfile = useAuthStore((state) => state.saveProfile);
 
   async function finishOnboarding() {
-    await settingsRepository.setOnboardingComplete(true);
-    await saveProfile({
-      onboardingCompleted: true,
-      preferredCurrency: settings?.currencyCode ?? null
-    });
-    toast.success("Setup complete.");
-    navigate(ROUTES.dashboard);
+    try {
+      await settingsRepository.setOnboardingComplete(true);
+      await saveProfile({
+        onboardingCompleted: true,
+        preferredCurrency: settings?.currencyCode ?? null
+      });
+      toast.success("Setup complete.");
+      navigate(ROUTES.dashboard);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to finish setup.");
+    }
   }
 
   async function handleContinue() {
@@ -43,7 +47,7 @@ export function OnboardingReminderPage() {
           <p className="text-sm font-semibold uppercase tracking-[0.22em] text-secondary">Onboarding</p>
           <h1 className="text-4xl font-bold">Stay on Track</h1>
           <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
-            Reminder preferences are saved in your local workspace and cloud profile continuity, while actual delivery depends on browser support.
+            Reminder preferences are saved to Supabase for your account, while actual browser delivery still depends on platform support.
           </p>
         </div>
 
@@ -60,9 +64,11 @@ export function OnboardingReminderPage() {
                 <Switch
                   checked={preferences?.enabled ?? false}
                   onCheckedChange={(enabled) =>
-                    void settingsRepository.updateNotificationPreferences({
-                      enabled
-                    })
+                    void settingsRepository
+                      .updateNotificationPreferences({ enabled })
+                      .catch((error: unknown) =>
+                        toast.error(error instanceof Error ? error.message : "Unable to update reminders.")
+                      )
                   }
                 />
               </div>
@@ -77,9 +83,11 @@ export function OnboardingReminderPage() {
                   value={preferences?.reminderTime ?? "20:00"}
                   disabled={!preferences?.enabled}
                   onChange={(event) =>
-                    void settingsRepository.updateNotificationPreferences({
-                      reminderTime: event.target.value
-                    })
+                    void settingsRepository
+                      .updateNotificationPreferences({ reminderTime: event.target.value })
+                      .catch((error: unknown) =>
+                        toast.error(error instanceof Error ? error.message : "Unable to update reminder time.")
+                      )
                   }
                 />
               </div>

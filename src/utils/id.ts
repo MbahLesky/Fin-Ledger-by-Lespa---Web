@@ -22,7 +22,7 @@ function createPseudoRandomBytes(length: number) {
   return bytes;
 }
 
-function createUuid() {
+export function createUuid() {
   const webCrypto = globalThis.crypto;
 
   if (webCrypto && typeof webCrypto.randomUUID === "function") {

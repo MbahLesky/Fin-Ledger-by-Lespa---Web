@@ -1,22 +1,138 @@
-import { appDb } from "@/db/dexie";
 import { createDefaultCategories } from "@/db/seed/default-records";
+import {
+  assertOnlineForSharedWrite,
+  assertSupabaseClient,
+  getAuthenticatedUserId,
+  nowTimestamp,
+  readBoolean,
+  readNullableString,
+  readString
+} from "@/services/supabase-data-service";
+import { useRealtimeStore } from "@/store/realtime-store";
 import type { Category, TransactionType } from "@/types";
-import { nowIso } from "@/utils/date-utils";
-import { createId } from "@/utils/id";
-import { syncRepository } from "@/db/repositories/sync-repository";
+import { createUuid } from "@/utils/id";
 
-async function ensureDefaultCategories() {
-  const count = await appDb.categories.count();
-  if (count === 0) {
-    await appDb.categories.bulkPut(createDefaultCategories());
+function fromCategoryRow(row: Record<string, unknown>): Category {
+  return {
+    id: readString(row, "id"),
+    userId: readString(row, "user_id"),
+    name: readString(row, "name"),
+    type: readString(row, "type") as TransactionType,
+    iconKey: readNullableString(row, "icon_key"),
+    colorKey: readNullableString(row, "color_key"),
+    isSystem: readBoolean(row, "is_system"),
+    isActive: readBoolean(row, "is_active", true),
+    createdAt: readString(row, "created_at"),
+    updatedAt: readString(row, "updated_at"),
+    deletedAt: readNullableString(row, "deleted_at")
+  };
+}
+
+function toCategoryPayload(category: Category) {
+  return {
+    id: category.id,
+    user_id: category.userId,
+    name: category.name,
+    type: category.type,
+    icon_key: category.iconKey ?? null,
+    color_key: category.colorKey ?? null,
+    is_system: category.isSystem,
+    is_active: category.isActive,
+    created_at: category.createdAt,
+    updated_at: category.updatedAt,
+    deleted_at: category.deletedAt ?? null
+  };
+}
+
+function notifyCategoriesChanged() {
+  useRealtimeStore.getState().markLocalMutation("categories");
+}
+
+async function ensureDefaultCategories(userId: string) {
+  const client = assertSupabaseClient();
+  const { data: activeRows, error } = await client
+    .from("categories")
+    .select("id")
+    .eq("user_id", userId)
+    .is("deleted_at", null)
+    .eq("is_active", true)
+    .limit(1);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  if ((activeRows ?? []).length > 0) {
+    return;
+  }
+
+  const defaults = createDefaultCategories(userId);
+  const defaultIds = defaults.map((category) => category.id);
+  const { data: existingRows, error: existingError } = await client
+    .from("categories")
+    .select("id")
+    .eq("user_id", userId)
+    .in("id", defaultIds);
+
+  if (existingError) {
+    throw new Error(existingError.message);
+  }
+
+  const existingIds = new Set((existingRows ?? []).map((row) => readString(row, "id")));
+  const missingDefaults = defaults.filter((category) => !existingIds.has(category.id));
+
+  if (missingDefaults.length > 0) {
+    const { error: seedError } = await client
+      .from("categories")
+      .insert(missingDefaults.map(toCategoryPayload));
+
+    if (seedError) {
+      throw new Error(seedError.message);
+    }
+
+    notifyCategoriesChanged();
   }
 }
 
+async function fetchCategoryById(userId: string, id: string) {
+  const client = assertSupabaseClient();
+  const { data, error } = await client
+    .from("categories")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("id", id)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data ? fromCategoryRow(data) : undefined;
+}
+
 export const categoriesRepository = {
+  async ensureDefaults(userId?: string) {
+    await ensureDefaultCategories(userId ?? (await getAuthenticatedUserId()));
+  },
+
   async listActive() {
-    await ensureDefaultCategories();
-    const categories = await appDb.categories.filter((item) => !item.deletedAt && item.isActive).toArray();
-    return categories.sort((left, right) => left.name.localeCompare(right.name));
+    const userId = await getAuthenticatedUserId();
+    await ensureDefaultCategories(userId);
+
+    const client = assertSupabaseClient();
+    const { data, error } = await client
+      .from("categories")
+      .select("*")
+      .eq("user_id", userId)
+      .is("deleted_at", null)
+      .eq("is_active", true)
+      .order("name", { ascending: true });
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return (data ?? []).map(fromCategoryRow);
   },
 
   async listByType(type: TransactionType) {
@@ -25,22 +141,18 @@ export const categoriesRepository = {
   },
 
   async getById(id: string) {
-    await ensureDefaultCategories();
-    return appDb.categories.get(id);
+    const userId = await getAuthenticatedUserId();
+    await ensureDefaultCategories(userId);
+    return fetchCategoryById(userId, id);
   },
 
   async findMatch(name: string, type: TransactionType) {
-    await ensureDefaultCategories();
     const normalized = name.trim().toLowerCase();
-    return appDb.categories
-      .filter(
-        (category) =>
-          !category.deletedAt &&
-          category.isActive &&
-          category.type === type &&
-          category.name.trim().toLowerCase() === normalized
-      )
-      .first();
+    return (await this.listActive()).find(
+      (category) =>
+        category.type === type &&
+        category.name.trim().toLowerCase() === normalized
+    );
   },
 
   async createCategory(input: {
@@ -50,80 +162,83 @@ export const categoriesRepository = {
     iconKey?: string | null;
     userId?: string | null;
   }) {
-    const timestamp = nowIso();
+    assertOnlineForSharedWrite();
+    const userId = await getAuthenticatedUserId();
+    const timestamp = nowTimestamp();
     const category: Category = {
-      id: createId("category"),
+      id: createUuid(),
       name: input.name.trim(),
       type: input.type,
       colorKey: input.colorKey ?? (input.type === "income" ? "success" : "danger"),
       iconKey: input.iconKey ?? null,
       isSystem: false,
       isActive: true,
-      userId: input.userId ?? null,
-      remoteId: null,
-      syncStatus: "pending",
-      syncError: null,
-      lastSyncedAt: null,
+      userId,
       createdAt: timestamp,
       updatedAt: timestamp,
       deletedAt: null
     };
 
-    await appDb.categories.add(category);
-    await syncRepository.enqueue("categories", category.id, "create", JSON.stringify(category));
-    return category;
+    const client = assertSupabaseClient();
+    const { data, error } = await client
+      .from("categories")
+      .insert(toCategoryPayload(category))
+      .select("*")
+      .single();
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    notifyCategoriesChanged();
+    return fromCategoryRow(data);
   },
 
   async updateCategory(
     id: string,
-    updates: Partial<Pick<Category, "name" | "colorKey" | "iconKey" | "isActive" | "userId">>
+    updates: Partial<Pick<Category, "name" | "colorKey" | "iconKey" | "isActive" | "userId" | "deletedAt">>
   ) {
-    const current = await appDb.categories.get(id);
+    assertOnlineForSharedWrite();
+    const userId = await getAuthenticatedUserId();
+    const current = await fetchCategoryById(userId, id);
+
     if (!current) {
       throw new Error("Category not found.");
     }
 
-    const next: Category = {
-      ...current,
-      ...updates,
-      syncStatus: "pending",
-      syncError: null,
-      updatedAt: nowIso()
-    };
+    const client = assertSupabaseClient();
+    const { data, error } = await client
+      .from("categories")
+      .update(
+        toCategoryPayload({
+          ...current,
+          ...updates,
+          userId,
+          updatedAt: nowTimestamp()
+        })
+      )
+      .eq("user_id", userId)
+      .eq("id", id)
+      .select("*")
+      .single();
 
-    await appDb.categories.put(next);
-    await syncRepository.enqueue("categories", next.id, "update", JSON.stringify(next));
-    return next;
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    notifyCategoriesChanged();
+    return fromCategoryRow(data);
   },
 
   async softDelete(id: string) {
-    const category = await appDb.categories.get(id);
+    const category = await this.getById(id);
     if (!category || category.isSystem) {
       return;
     }
 
-    const next: Category = {
-      ...category,
+    await this.updateCategory(id, {
       isActive: false,
-      deletedAt: nowIso(),
-      syncStatus: "pending",
-      syncError: null,
-      updatedAt: nowIso()
-    };
-
-    await appDb.categories.put(next);
-    await syncRepository.enqueue("categories", next.id, "delete", JSON.stringify(next));
-  },
-
-  async stampOwnership(userId: string) {
-    const records = await appDb.categories.toArray();
-    await Promise.all(
-      records.map((record) =>
-        this.updateCategory(record.id, {
-          userId
-        })
-      )
-    );
+      deletedAt: nowTimestamp()
+    });
   }
 };
-

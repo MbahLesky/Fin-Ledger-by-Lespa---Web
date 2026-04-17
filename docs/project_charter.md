@@ -54,7 +54,7 @@ The result is poor financial visibility and weaker decision-making.
 - Banking integrations.
 - Advanced financial forecasting.
 - Full accounting workflows.
-- Server-driven automation beyond the defined sync foundation.
+- Server-driven automation beyond the current direct-Supabase web foundation.
 
 ## Stakeholders
 

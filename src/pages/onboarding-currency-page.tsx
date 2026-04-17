@@ -1,4 +1,3 @@
-import { useLiveQuery } from "dexie-react-hooks";
 import { ArrowRight, DownloadCloud, Wallet } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -9,18 +8,23 @@ import { SUPPORTED_CURRENCIES } from "@/lib/constants";
 import { ROUTES } from "@/routes/route-constants";
 import { settingsRepository } from "@/db/repositories/settings-repository";
 import { useAuthStore } from "@/store/auth-store";
+import { useBackendQuery } from "@/hooks/use-backend-query";
 
 export function OnboardingCurrencyPage() {
   const navigate = useNavigate();
-  const settings = useLiveQuery(() => settingsRepository.getSettings(), []);
+  const { data: settings } = useBackendQuery(() => settingsRepository.getSettings(), []);
   const saveProfile = useAuthStore((state) => state.saveProfile);
 
   async function chooseCurrency(currencyCode: string) {
-    await settingsRepository.setCurrency(currencyCode);
-    await accountsRepository.syncDefaultAccountCurrency(currencyCode);
-    await saveProfile({
-      preferredCurrency: currencyCode
-    });
+    try {
+      await settingsRepository.setCurrency(currencyCode);
+      await accountsRepository.updateDefaultAccountCurrency(currencyCode);
+      await saveProfile({
+        preferredCurrency: currencyCode
+      });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to save currency.");
+    }
   }
 
   function continueTo(path: string) {

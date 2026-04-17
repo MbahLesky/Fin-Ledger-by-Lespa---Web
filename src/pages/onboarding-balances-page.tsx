@@ -1,6 +1,5 @@
 import { useEffect } from "react";
 import { useFieldArray, useForm } from "react-hook-form";
-import { useLiveQuery } from "dexie-react-hooks";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { accountsRepository } from "@/db/repositories/accounts-repository";
@@ -11,6 +10,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ROUTES } from "@/routes/route-constants";
 import { useAuthStore } from "@/store/auth-store";
+import { useBackendQuery } from "@/hooks/use-backend-query";
 
 interface BalanceFormValues {
   rows: Array<{
@@ -24,7 +24,7 @@ interface BalanceFormValues {
 export function OnboardingBalancesPage() {
   const navigate = useNavigate();
   const userId = useAuthStore((state) => state.user?.id ?? null);
-  const accounts = useLiveQuery(() => accountsRepository.listActive(), []);
+  const { data: accounts = [] } = useBackendQuery(() => accountsRepository.listActive(), []);
   const form = useForm<BalanceFormValues>({
     defaultValues: {
       rows: []
@@ -36,7 +36,7 @@ export function OnboardingBalancesPage() {
   });
 
   useEffect(() => {
-    if (!accounts) {
+    if (!accounts.length) {
       return;
     }
 
@@ -68,26 +68,30 @@ export function OnboardingBalancesPage() {
       return;
     }
 
-    for (const row of newRows) {
-      await accountsRepository.createAccount({
-        name: row.name,
-        type: "other",
-        initialBalance: Number(row.balance || 0),
-        currencyCode: (await settingsRepository.getSettings()).currencyCode,
-        userId
-      });
+    try {
+      for (const row of newRows) {
+        await accountsRepository.createAccount({
+          name: row.name,
+          type: "other",
+          initialBalance: Number(row.balance || 0),
+          currencyCode: (await settingsRepository.getSettings()).currencyCode,
+          userId
+        });
+      }
+
+      const existingRows = values.rows.filter((row) => row.id);
+      await accountsRepository.saveOpeningBalances(
+        existingRows.map((row) => ({
+          id: row.id!,
+          balance: Number(row.balance || 0)
+        }))
+      );
+
+      toast.success("Starting balances saved.");
+      navigate(ROUTES.onboardingReminder);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to save starting balances.");
     }
-
-    const existingRows = values.rows.filter((row) => row.id);
-    await accountsRepository.saveOpeningBalances(
-      existingRows.map((row) => ({
-        id: row.id!,
-        balance: Number(row.balance || 0)
-      }))
-    );
-
-    toast.success("Starting balances saved.");
-    navigate(ROUTES.onboardingReminder);
   }
 
   return (

@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { useLiveQuery } from "dexie-react-hooks";
 import { ArrowRightLeft, Filter, Pencil, Plus, Search, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 import { EmptyState } from "@/components/data-display/empty-state";
 import {
   AlertDialog,
@@ -27,6 +27,7 @@ import { transfersRepository } from "@/db/repositories/transfers-repository";
 import { settingsRepository } from "@/db/repositories/settings-repository";
 import { transactionsRepository } from "@/db/repositories/transactions-repository";
 import { TransactionForm } from "@/features/transactions/transaction-form";
+import { useBackendQuery } from "@/hooks/use-backend-query";
 import { ROUTES } from "@/routes/route-constants";
 import { useTransactionFiltersStore } from "@/store/transaction-filters-store";
 import { useAuthStore } from "@/store/auth-store";
@@ -38,22 +39,39 @@ export function TransactionsPage() {
   const userId = useAuthStore((state) => state.user?.id ?? null);
   const filters = useTransactionFiltersStore((state) => state.filters);
   const setFilters = useTransactionFiltersStore((state) => state.setFilters);
-  const accounts = useLiveQuery(() => accountsRepository.listActive(), []);
-  const categories = useLiveQuery(() => categoriesRepository.listActive(), []);
-  const historyItems = useLiveQuery(() => historyRepository.listWithRelations(filters), [filters]);
-  const settings = useLiveQuery(() => settingsRepository.getSettings(), []);
+  const { data: accounts = [] } = useBackendQuery(() => accountsRepository.listActive(), []);
+  const { data: categories = [] } = useBackendQuery(() => categoriesRepository.listActive(), []);
+  const { data: historyItems = [], error: historyError } = useBackendQuery(
+    () => historyRepository.listWithRelations(filters),
+    [filters]
+  );
+  const { data: settings } = useBackendQuery(() => settingsRepository.getSettings(), []);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const editingTransaction = useLiveQuery(
-    () => (editingId ? transactionsRepository.getById(editingId) : undefined),
+  const { data: editingTransaction } = useBackendQuery(
+    () => (editingId ? transactionsRepository.getById(editingId) : Promise.resolve(undefined)),
     [editingId]
   );
   const selectedCurrencyCode = settings?.currencyCode ?? "USD";
-  const hasRows = (historyItems ?? []).length > 0;
+  const hasRows = historyItems.length > 0;
+
+  async function handleDelete(kind: "transaction" | "transfer", id: string) {
+    try {
+      if (kind === "transaction") {
+        await transactionsRepository.softDelete(id);
+      } else {
+        await transfersRepository.softDelete(id);
+      }
+
+      toast.success("Record deleted from Supabase.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to delete this record.");
+    }
+  }
 
   return (
     <PageShell
       title="Transactions"
-      description="Search, filter, edit, and remove transaction history while the ledger remains local-first."
+      description="Search, filter, edit, and remove shared transaction history from Supabase."
       action={
         <div className="flex items-center gap-2">
           <Button variant="outline" onClick={() => navigate(ROUTES.transfer)}>
@@ -100,7 +118,7 @@ export function TransactionsPage() {
 
         <Select
           value={filters.categoryId}
-          onValueChange={(value) => setFilters({ categoryId: value as typeof filters.categoryId })}
+          onValueChange={(value) => setFilters({ categoryId: value })}
           disabled={filters.type === "transfer"}
         >
           <SelectTrigger>
@@ -108,7 +126,7 @@ export function TransactionsPage() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All categories</SelectItem>
-            {(categories ?? []).map((category) => (
+            {categories.map((category) => (
               <SelectItem key={category.id} value={category.id}>
                 {category.name}
               </SelectItem>
@@ -119,14 +137,14 @@ export function TransactionsPage() {
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-2">
           <Select
             value={filters.accountId}
-            onValueChange={(value) => setFilters({ accountId: value as typeof filters.accountId })}
+            onValueChange={(value) => setFilters({ accountId: value })}
           >
             <SelectTrigger>
               <SelectValue placeholder="Account" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All accounts</SelectItem>
-              {(accounts ?? []).map((account) => (
+              {accounts.map((account) => (
                 <SelectItem key={account.id} value={account.id}>
                   {account.name}
                 </SelectItem>
@@ -151,7 +169,11 @@ export function TransactionsPage() {
         </div>
       </div>
 
-      {!hasRows ? (
+      {historyError ? (
+        <div className="rounded-xl border border-accent/30 bg-accent/5 p-4 text-sm text-accent">
+          {historyError}
+        </div>
+      ) : !hasRows ? (
         <EmptyState
           icon={Filter}
           title="No ledger records match the current view"
@@ -174,7 +196,7 @@ export function TransactionsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {historyItems?.map((item) => (
+              {historyItems.map((item) => (
                 <TableRow key={`${item.kind}-${item.id}`}>
                   <TableCell className="font-medium">{item.occurredAt.slice(0, 10)}</TableCell>
                   <TableCell>
@@ -222,17 +244,13 @@ export function TransactionsPage() {
                           <AlertDialogHeader>
                             <AlertDialogTitle>Delete transaction?</AlertDialogTitle>
                             <AlertDialogDescription>
-                              This uses a soft delete so the change can sync safely later. The row will disappear from your active history immediately.
+                              This removes the row from active Supabase-backed history for this account.
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
                             <AlertDialogCancel>Cancel</AlertDialogCancel>
                             <AlertDialogAction
-                              onClick={() =>
-                                void (item.kind === "transaction"
-                                  ? transactionsRepository.softDelete(item.id)
-                                  : transfersRepository.softDelete(item.id))
-                              }
+                              onClick={() => void handleDelete(item.kind, item.id)}
                             >
                               Delete
                             </AlertDialogAction>

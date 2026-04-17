@@ -1,142 +1,111 @@
 # System Architecture
 
-*Finance Ledger - Offline-First Web Architecture*
+*Finance Ledger - Web Direct Supabase Architecture*
 
 ## Purpose
 
-This document defines the target architecture for Finance Ledger as a web application while preserving the same finance-tracking product scope already established for the project.
+This document defines the current web architecture after removing the broken local sync layer.
 
-## Architectural Reality
+## Current Direction
 
-Finance Ledger is now documented as an **offline-capable web application** with a local-first data pipeline.
+Finance Ledger Web is now an online-first React application for shared business data.
 
-The web stack uses:
+The active stack is:
 
-- React + TypeScript + Vite for the application shell
-- Tailwind CSS and shadcn/ui for the interface layer
-- React Router for page routing
-- Zustand for application-facing state orchestration
-- Dexie + IndexedDB for local business data persistence
-- Supabase Auth for identity and session management
-- Supabase PostgreSQL for remote profile and ledger storage
-- Recharts for dashboard and analytics visualization
-- service worker + web manifest for PWA installability and offline shell caching
+- React + TypeScript + Vite for the web shell
+- React Router for guarded app navigation
+- Tailwind CSS and shadcn/ui primitives for the interface
+- Zustand for auth, UI, filters, and realtime connection state
+- Supabase Auth for identity and browser session restore
+- Supabase PostgreSQL as the source of truth for shared ledger records
+- Supabase Realtime for backend change notifications
+- browser local storage only for selected local-only operational history
+- service worker and manifest for installable shell behavior, not offline shared-data writes
 
-## Core Runtime Principle
+The previous Dexie/IndexedDB outbox sync layer is removed from the web app. Shared business records are not written locally first and are not queued for later upload in this phase.
 
-Finance Ledger uses **local write first, cloud sync second** behavior.
+## Runtime Principle
 
-Core finance actions should follow this path:
+Shared business data follows this path:
 
 ```text
 React UI
--> feature action / form validation
--> Dexie local database
--> sync queue / outbox
--> sync engine
--> Supabase / PostgreSQL
+-> form validation / feature action
+-> repository or service module
+-> Supabase client
+-> Supabase PostgreSQL with RLS
+-> Supabase Realtime event
+-> query invalidation and UI refresh
 ```
 
 This means:
 
-- user-facing CRUD does not wait on a network round trip
-- dashboard and analytics read from local source data
-- offline use remains available for core finance flows
-- cloud sync restores continuity when connectivity returns
-
-## High-Level Flows
-
-### Ledger and Sync Flow
-
-```text
-React pages and components
--> Zustand stores and feature services
--> Dexie repositories
--> IndexedDB local tables
--> sync outbox and pull checkpoints
--> Supabase Postgres
-```
-
-### Auth and Profile Flow
-
-```text
-React auth pages
--> Supabase Auth
--> Supabase public.profiles
--> session-aware route guards
-```
-
-### Offline Shell Flow
-
-```text
-PWA manifest
--> service worker caches app shell and static assets
--> browser loads cached shell offline
--> app reconnects and sync resumes when network returns
-```
+- reads come from Supabase
+- writes go directly to Supabase
+- RLS and `auth.uid()` protect ownership
+- realtime events refresh visible data after backend changes
+- offline shared-data writes fail clearly instead of pretending to save
+- web and mobile users signed into the same account see the same backend data
 
 ## Architecture Layers
 
 ### Presentation Layer
 
-- React pages, layouts, and dialogs
-- shadcn/ui component primitives
-- responsive navigation for desktop and mobile browser widths
-- no direct Supabase or IndexedDB calls from leaf components
+- pages, layouts, dialogs, forms, charts, and shared UI components
+- no raw Supabase table calls in presentation components
+- loading, empty, and failure states are shown at page or feature boundaries
 
 ### Application Layer
 
-- React Hook Form + Zod for validated input boundaries
-- Zustand stores for session, UI state, filters, and orchestrated workflows
-- route guards for signed-out, profile-completion, onboarding, and main-app states
-- feature services coordinating reads, writes, and sync-aware side effects
+- route guards for signed-out, profile-completion, onboarding, and protected app areas
+- React Hook Form and Zod for validated input
+- focused hooks such as `useBackendQuery`
+- Zustand stores for auth, UI state, filters, and realtime status
 
 ### Data Layer
 
-- Dexie schemas and repositories for local business data
-- sync engine for outbox processing, remote pulls, and reconciliation
-- Supabase client wrappers for auth, profile, and remote persistence operations
+- repository modules under `src/db/repositories/` remain the app-facing data boundary
+- repositories now use direct Supabase CRUD
+- `profile-service` manages `public.profiles`
+- `ledger-realtime-service` owns the single shared Supabase Realtime subscription per signed-in user
+- `audit-repository` stores local-only import/export history in browser storage
 
-### Storage Layer
+### Backend Layer
 
-- IndexedDB for local source data and sync metadata
-- browser cache storage for shell assets
-- Supabase PostgreSQL for authenticated remote continuity
-- Supabase Auth session storage in the browser
+- Supabase Auth owns identity
+- Supabase PostgreSQL owns shared ledger data
+- RLS policies restrict rows to the authenticated owner
+- Supabase Realtime broadcasts changes for shared tables
 
-## Main Components
+## Shared Source-of-Truth Tables
 
-| Component | Responsibility |
-| --- | --- |
-| React UI | Render pages, forms, tables, charts, and empty states |
-| Route Guards | Direct users through signed-out, profile completion, onboarding, and main app states |
-| Zustand Stores | Expose app-facing state and coordinate workflows without making UI components own data rules |
-| Dexie Database | Persist accounts, categories, transactions, transfers, settings, reminders, import/export history, and sync metadata locally |
-| Sync Engine | Queue local mutations, push pending changes, pull remote changes, and update sync status |
-| Supabase Auth Service | Sign up, sign in, sign out, and restore browser sessions |
-| Profile Service | Create, read, and update `public.profiles` |
-| PWA Shell | Cache static assets and allow installable browser usage |
-| Reminder Service | Persist reminder preferences and trigger browser notification flows or in-app reminder fallbacks |
+These tables are shared, backend-backed, and user-owned:
 
-## Data Ownership Model
+- `public.profiles`
+- `public.accounts`
+- `public.categories`
+- `public.transactions`
+- `public.transfers`
+- `public.settings`
+- `public.notification_preferences`
 
-### Local Business Data
+The web client filters and writes by the active authenticated user. The backend also enforces ownership through RLS.
 
-- accounts
-- categories
-- transactions
-- transfers
-- settings
-- notification preferences
+## Local-Only Data
 
-These records are readable and writable offline in IndexedDB and are the runtime source of truth for the UI.
+Only device/browser-specific operational data remains local:
 
-### Remote Identity and Profile Data
+- CSV import history
+- CSV export history
+- temporary import preview and mapping state in component memory
+- browser notification permission state
+- transient UI state such as filters or open dialogs
 
-- `auth.users` managed by Supabase Auth
-- `public.profiles` managed by Finance Ledger application logic
+Accounts, categories, transactions, transfers, settings, and shared notification preferences must not be stored as local-only business records.
 
-### Remote Ledger Continuity Data
+## Realtime Flow
+
+On sign-in, the app opens one realtime channel scoped to the user. It subscribes to:
 
 - `accounts`
 - `categories`
@@ -144,85 +113,37 @@ These records are readable and writable offline in IndexedDB and are the runtime
 - `transfers`
 - `settings`
 - `notification_preferences`
+- `profiles`
 
-These tables mirror syncable business records for authenticated cloud continuity and multi-device use.
+On a backend change, the realtime store increments a revision counter. Backend query hooks observe that revision and refetch their repository query. On logout or user change, the subscription is removed and in-memory query state is cleared by auth-aware hooks.
 
-### Local-Only Operational Data
+## Auth and Cleanup
 
-- import records
-- export records
-- sync error logs
-- outbox entries
+- app bootstrap restores the Supabase session
+- profile rows are ensured after authentication
+- default settings, accounts, and categories are seeded in Supabase for the signed-in user when missing
+- sign-out clears auth state and realtime state
+- hooks stop returning prior user data when auth state changes
 
-### Derived Data
+## Online-First Behavior
 
-- dashboard totals
-- analytics summaries
-- account balances
-- recent activity
+The app shell may still load from browser cache, but shared-data actions require network access.
 
-Derived data is computed from transactions, transfers, and related entities, not stored as canonical source tables.
+Expected behavior:
 
-## Offline-First Behavior
+- reads require a valid session and backend availability
+- writes check browser connectivity and surface Supabase errors
+- no offline shared-data queue exists in this phase
+- local-only import/export history can remain available on the device
 
-The web app must remain useful when the browser loses connectivity.
+## Out of Scope
 
-Required behavior:
-
-- cached app shell loads after the first successful visit
-- local finance data remains available from IndexedDB
-- create, edit, and delete operations write locally even when offline
-- pending writes are marked for later sync
-- sync resumes automatically or on user-triggered retry when connectivity returns
-
-## Conflict and Failure Handling
-
-MVP conflict policy:
-
-- row ownership is scoped by authenticated `user_id`
-- soft deletes use `deleted_at` rather than immediate hard deletes
-- records carry `updated_at` and sync timestamps
-- last-write-wins by trusted timestamp is the default row-level conflict rule for MVP
-- rejected writes remain in a failed state locally with retry guidance instead of being discarded silently
-
-## Reminder Architecture Note
-
-The reminder feature remains part of the product, but browser platforms vary in background notification support.
-
-Finance Ledger therefore documents reminders as:
-
-- persisted reminder preferences in Dexie and Supabase
-- browser notification permissions where supported
-- installable PWA behavior for the best desktop-like experience
-- in-app reminder prompts as a fallback when background delivery is limited
-
-## Why This Architecture Fits the Product
-
-- It preserves the original local-first finance workflow.
-- It keeps the app usable in weak or absent connectivity.
-- It maps cleanly to a web and PWA delivery model.
-- It avoids blocking transaction entry on backend availability.
-- It keeps backend and sync logic outside page components.
-- It creates a practical path to multi-device continuity without changing the finance domain model.
-
-## Phase Scope Clarification
-
-Documented now:
-
-- offline-first web architecture
-- installable PWA shell
-- Dexie-based local data storage
-- Supabase Auth and `public.profiles`
-- authenticated sync foundation for business tables
-- responsive browser-based pages and views
-
-Planned later:
-
-- richer sync conflict UX
-- deeper chatbot/backend workflows
-- advanced server-side automation
-- broader notification delivery beyond browser constraints
+- PowerSync
+- Dexie business-data persistence
+- offline mutation queues
+- conflict resolution UX
+- chatbot or server automation
 
 ## Summary
 
-Finance Ledger is now documented as a React-based, offline-capable web application. The architecture centers the browser as the primary client, IndexedDB as the immediate source of truth, and Supabase as the authenticated cloud backend that receives synchronized changes after local writes succeed.
+Finance Ledger Web now uses Supabase directly as the shared data source of truth. The old sync layer has been removed, realtime subscriptions keep the UI refreshed, and local persistence is limited to browser/device-only operational data.

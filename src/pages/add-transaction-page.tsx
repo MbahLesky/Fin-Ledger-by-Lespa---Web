@@ -9,14 +9,14 @@ export function AddTransactionPage() {
   return (
     <PageShell
       title="Add transaction"
-      description="Capture income or expense records quickly with the same local-first path that powers dashboard totals and analytics."
+      description="Capture income or expense records directly in Supabase so web and mobile stay aligned."
     >
       <div className="grid gap-5 lg:grid-cols-[1fr,0.9fr]">
         <Card>
           <CardHeader>
             <CardTitle>Manual entry</CardTitle>
             <CardDescription>
-              Amount, type, category, account, note, and date are validated before Fin Tracker saves locally.
+              Amount, type, category, account, note, and date are validated before Fin Tracker saves to the backend.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -28,14 +28,14 @@ export function AddTransactionPage() {
           <CardHeader>
             <CardTitle className="text-primary-foreground">How this save works</CardTitle>
             <CardDescription className="text-primary-foreground/84">
-              The UI writes into IndexedDB first so transaction entry stays fast and available offline.
+              Shared ledger writes are online-first in this phase.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3 text-sm leading-6 text-primary-foreground/88">
             <p>1. The form validates the amount, type, category, account, and date.</p>
-            <p>2. The transaction is stored locally as the ledger source of truth.</p>
-            <p>3. A sync outbox entry is queued for the authenticated browser session.</p>
-            <p>4. The dashboard and analytics update from the stored local data right away.</p>
+            <p>2. The transaction is written directly to Supabase for the signed-in user.</p>
+            <p>3. Realtime updates refresh dashboard, history, and analytics views.</p>
+            <p>4. If the network is unavailable, the save fails clearly instead of queuing offline.</p>
           </CardContent>
         </Card>
       </div>

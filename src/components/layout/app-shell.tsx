@@ -44,9 +44,9 @@ export function AppShell() {
           <BrandLogo />
           <div className="mt-8 rounded-2xl bg-brand-gradient p-5 text-primary-foreground shadow-card">
             <p className="text-sm font-medium text-primary-foreground/78">Fast capture</p>
-            <h2 className="mt-2 text-2xl font-bold">Track what changed, even offline.</h2>
+            <h2 className="mt-2 text-2xl font-bold">Track what changed across devices.</h2>
             <p className="mt-3 text-sm leading-6 text-primary-foreground/84">
-              Local-first entries keep your ledger useful in weak connectivity and ready to sync later.
+              Backend-backed entries keep your web and mobile ledger aligned through Supabase Realtime.
             </p>
           </div>
           <nav className="mt-8 grid gap-2">

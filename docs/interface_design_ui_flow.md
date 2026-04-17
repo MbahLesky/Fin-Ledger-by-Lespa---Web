@@ -4,24 +4,20 @@
 
 ## Purpose
 
-This document defines the page structure, responsive behavior, and primary user flows for the Finance Ledger web application.
+This document defines the current page flow and UX expectations for the direct-Supabase web app.
 
 ## Design Principles
 
-- simplicity first
-- fast manual entry
-- safe bulk import and export
-- real empty states instead of demo placeholders
-- clear auth state before entering the ledger
-- local-first behavior must not disappear behind sync status
-- responsive layouts for laptop, tablet, and mobile browser widths
-
-
-The complementary brand, color, theme, and copy direction now lives in `brand_visual_language.md`.
+- simple, fast finance capture
+- clear authenticated state before ledger access
+- shared backend data should feel current across devices
+- no UI copy should imply offline shared-data saving
+- import must preview before committing
+- writes must show success or failure clearly
+- empty states should work with real zero-data accounts
+- responsive layouts must work on desktop and mobile browser widths
 
 ## Navigation Model
-
-The web application uses route-based navigation.
 
 Primary destinations:
 
@@ -31,303 +27,193 @@ Primary destinations:
 - Transfer Money
 - Analytics
 - Settings / Profile
+- Import Data
+- Export Data
 
 Responsive behavior:
 
-- desktop and large tablet layouts use a persistent sidebar or top navigation
-- compact widths use a bottom navigation or condensed header actions
-- the Add Transaction action remains prominent regardless of layout
+- desktop uses persistent navigation
+- compact widths use bottom navigation and condensed header actions
+- Add Transaction remains prominent
 
-## Page Definitions
+## Auth Flow
 
-### Authentication Pages
+### Session Restore
 
-**Auth Loading / Session Restore View**
+- shown while Supabase session is checked
+- routes to signed-out, profile-completion, onboarding, or dashboard
 
-- shown at app start while the browser session is checked
-- displays a loading state such as `Restoring your session...`
-- routes to signed-out, profile-completion, onboarding, or main-app flow
+### Login/Register
 
-**Login Page**
+- email/password is active
+- Google and phone entry points remain visible but guarded as later-phase options
+- successful auth ensures profile and backend defaults
 
-- email input
-- password input
-- login button
-- Google sign-in button remains visible and shows a coming-soon message when tapped
-- phone sign-in entry point remains visible and routes into the phone page
-- register link
-- auth-unavailable guidance when Supabase config is missing
+### Profile Completion
 
-**Register Page**
+- shown when required profile fields are missing
+- saves profile directly to Supabase
 
-- full name input
-- email input
-- password input
-- confirm password input
-- register button
-- Google sign-up button remains visible and shows a coming-soon message when tapped
-- phone sign-up entry point remains visible and routes into the phone page
-- guidance about email confirmation when required by Supabase
+## Onboarding Flow
 
-**Phone Auth Page**
+### Choose Currency
 
-- phone number input
-- full name input for sign-up mode
-- send verification action
-- validation guidance for international phone format
-- submit action currently shows a coming-soon message instead of starting OTP delivery
+- user selects preferred currency
+- setting is saved to Supabase
+- default account currency is updated in Supabase
+- profile preferred currency is updated
 
-**OTP Verification Page**
+### Import Existing Records
 
-- not active in the current web phase
-- reserved for a later phone-auth milestone
+- user chooses CSV
+- app previews and validates rows
+- user maps accounts/categories
+- confirmed rows write directly to Supabase
+- import history remains local-only
 
-**Profile Completion Page**
+### Starting Balances
 
-- shown when authentication succeeds but the app profile is missing required fields
-- editable name field
-- editable phone field
-- save and continue action
+- Cash and Bank are seeded in Supabase when missing
+- custom accounts are written to Supabase
+- opening balances update backend account rows
 
-### Onboarding Pages
+### Daily Reminder
 
-**Choose Your Currency Page**
+- shared reminder preference writes to Supabase
+- browser notification permission remains device-specific
+- onboarding completion updates profile/settings
 
-- title: `Choose Your Currency`
-- selectable currency list
-- `Start fresh` action
-- `Import existing records` action
-- selected currency is saved before the user continues into either setup path
+## Main Pages
 
-**Import Existing Records Page**
-
-- available during onboarding before opening balances are finalized
-- browser file picker
-- CSV format guidance
-- parsed row preview
-- validation issues section
-- account mapping controls
-- category mapping controls
-- import confirmation button
-- import result summary
-- `Continue setup` action after a successful import
-
-**Set Starting Balances Page**
-
-- title: `Set Your Starting Balances`
-- always shows Cash and Bank
-- supports custom accounts such as MoMo
-- reflects imported accounts if the user came from onboarding import
-- skip or continue action
-- balances are treated as opening balances, not transactions
-
-**Daily Reminder Page**
-
-- title: `Stay on Track`
-- reminder toggle
-- time picker when enabled
-- browser notification permission guidance
-- skip or continue action to finish onboarding
-
-### Dashboard Page
+### Dashboard
 
 Purpose:
 
-- give a quick view of current balance, totals, accounts, and recent activity
-
-Sections:
-
-- current balance
-- total income
-- total expenses
-- today's spending
-- account summary
-- quick actions such as add transaction, history, analytics, and import data
-- recent transactions
-- sync status banner when there are pending or failed writes
-
-Empty-state behavior:
-
-- shows zero balance correctly
-- keeps default and custom accounts visible
-- prompts the user to import data or add the first transaction
-
-### Transactions Page
-
-Purpose:
-
-- show searchable and filterable transaction history
-
-Elements:
-
-- search
-- type filter (`income`, `expense`, `transfer`)
-- category filter
-- account filter
-- date filter
-- transaction and transfer list or table
-
-Actions:
-
-- open detail panel or page for transaction edits
-- edit transaction rows
-- delete with confirmation
-
-Transfer row behavior:
-
-- transfer rows are visually distinct from income and expense rows
-- transfer rows show path such as `Cash -> MoMo`
-- transfer rows show amount, optional fee, date, and note
-- transfer rows are never labeled as income or expense
-
-Empty-state behavior:
-
-- explains that the user can add the first transaction or import a CSV
-
-### Add Transaction View
-
-Purpose:
-
-- support fast manual entry for income and expense records
-
-Presentation options:
-
-- modal or drawer on desktop
-- full page or sheet on smaller screens
-
-Layout:
-
-- amount input
-- income or expense toggle
-- category selector
-- account selector
-- note field
-- date selector
-- save action
-
-### Transfer Money View
-
-Purpose:
-
-- move funds between user-owned accounts without misclassifying the movement as income or expense
-
-Layout:
-
-- from account selector
-- to account selector
-- amount input
-- optional fee input
-- date selector
-- note input
-- transfer summary preview (total debit from source)
-- save transfer action
-
-Validation behavior:
-
-- source and destination accounts must be different
-- amount must be greater than zero
-- fee must be zero or greater
-- source account must have enough available balance for `amount + fee`
-- submit action remains disabled while invalid
-
-Feedback behavior:
-
-- inline validation messages
-- loading state while saving
-- success toast after local save
-
-### Analytics Page
-
-Purpose:
-
-- show derived trends and breakdowns from stored transactions
+- show current balance, totals, account summaries, quick actions, and recent activity
 
 Behavior:
 
-- reads from local data first
-- handles empty data safely
-- adapts chart layout for narrower screens
+- reads backend data through repositories
+- refreshes after Supabase Realtime events
+- shows backend/reconnect state when needed
+- does not show old sync status or pending-write counts
 
-### Settings / Profile Page
+### Transactions
+
+Purpose:
+
+- searchable/filterable income, expense, and transfer history
+
+Actions:
+
+- edit transaction
+- soft-delete transaction
+- soft-delete transfer
+- navigate to transfer/add transaction
+
+Behavior:
+
+- list data comes from Supabase
+- delete confirmation explains backend-backed history
+- errors are surfaced with toasts or inline messages
+
+### Add Transaction
+
+Purpose:
+
+- fast manual entry for income and expense records
+
+Fields:
+
+- amount
+- type
+- category
+- account
+- date
+- note
+
+Behavior:
+
+- validates client-side first
+- writes directly to Supabase
+- success confirms backend save
+- offline/network failure is visible
+
+### Transfer Money
+
+Purpose:
+
+- move funds between user-owned accounts without treating transfer amount as income or expense
+
+Behavior:
+
+- validates account difference, amount, fee, and source balance
+- writes transfer row to Supabase
+- transfer fees affect expense-side analytics
+
+### Analytics
+
+Purpose:
+
+- show derived monthly trends and category concentration
+
+Behavior:
+
+- reads from backend transactions and transfers
+- handles empty and error states safely
+
+### Settings
 
 Sections:
 
-- authenticated profile and session information
+- profile/session
 - currency
-- accounts and opening balances
+- theme
 - reminders
-- theme preferences
-- category management
-- import data
-- export data
-- reset app data
-- log out
+- accounts and balances
+- categories
+- import/export
+- reset data
 
-### Import Page
+Behavior:
 
-Purpose:
+- shared settings/preferences write to Supabase
+- reset clears backend ledger data for the signed-in user and local import/export history
+- sign-out clears auth and realtime state
 
-- import historical finance records from a local CSV file
+### Import/Export
 
-MVP flow:
+Import:
 
-1. Choose local CSV file
-2. Parse and validate headers and rows
-3. Show preview and row issues
-4. Match or create accounts and categories
-5. Import valid rows only
-6. Show summary and update dashboard, history, and analytics automatically
+- preview, validate, map, confirm
+- commit valid rows to Supabase
+- local-only import history
 
-### Export Page
+Export:
 
-Purpose:
+- generate CSV from active Supabase transactions
+- browser download
+- local-only export history
 
-- export all locally stored transactions into a CSV backup
+## Realtime UX
 
-MVP flow:
+The UI may show a backend connection banner when:
 
-1. Open export page
-2. Generate CSV from locally stored transactions
-3. Download file through the browser
-4. Show success or failure feedback
+- the browser is offline
+- realtime is connecting
+- realtime reports an error
 
-## Textual User Flows
-
-- first-time email sign-up: Register -> Supabase auth -> profile row ensured -> choose currency -> start fresh or import -> starting balances -> optional reminders -> dashboard
-- phone sign-up option tapped: Register -> Phone page -> enter phone -> submit -> coming-soon message -> user returns to email flow for active auth
-- Google sign-in or sign-up option tapped: Login/Register -> Google button -> coming-soon message -> user stays in auth flow and uses email instead
-- returning user with session: App load -> session restore -> profile check -> onboarding if incomplete or dashboard if ready
-- daily use: Open app or installed PWA -> dashboard -> add transaction or review history -> analytics/settings as needed
-- transfer money: Dashboard/Transactions -> Transfer Money -> choose accounts and amount -> optional fee -> save -> balances and history refresh from local data
-- later manual import: Settings -> Import data -> choose CSV -> preview and map -> confirm import -> updated ledger
-- export backup: Settings -> Export data -> generate CSV -> download file
-- sign out: Settings -> Log out -> Supabase session cleared -> login page
-- reset flow: Settings -> Reset app data -> confirm -> onboarding restarts with system defaults only
-
-## UX Considerations
-
-- import must never save rows silently without preview and confirmation
-- invalid CSV rows should be visible and skippable
-- duplicate handling should be conservative and transparent
-- export should create a clean spreadsheet-friendly CSV
-- auth states should always show progress and clear recovery messaging
-- onboarding should happen only after the user has a real authenticated identity
-- profile completion should be brief and only shown when required
-- sync should remain a background system until the user needs retry or status visibility
-- desktop layouts may show more data density, but the feature flow must match the mobile-width experience
-- transfer interactions must stay consistent with the mobile product flow and data semantics
+The copy must describe backend refresh/reconnect behavior, not queued sync.
 
 ## Future Extensions
 
-- replace-all import mode with stronger confirmation
-- filtered export by account or date range
-- JSON or XLSX support
-- Google sign-in activation
-- phone OTP activation
-- forgot password flow
-- richer visible sync history and conflict resolution
-- richer account profile editing after backend growth
+- filtered exports
+- richer account editing
+- Google sign-in
+- phone OTP
+- server-assisted notifications
+- offline sync may be reconsidered as a separate future architecture
 
 ## Summary
 
-The interface flow still starts with authentication, profile completion, and onboarding, then moves into the same ledger, analytics, settings, and portability flows already defined for Finance Ledger. The difference is that those experiences are now delivered as responsive web pages and PWA views across screen sizes.
+The interface still follows the same Finance Ledger user journey, but all shared data interactions now reflect direct Supabase reads/writes and realtime backend refresh.

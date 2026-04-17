@@ -1,10 +1,18 @@
 import { isWithinInterval, parseISO } from "date-fns";
-import { appDb, getOptionalTable } from "@/db/dexie";
 import { accountsRepository } from "@/db/repositories/accounts-repository";
-import { syncRepository } from "@/db/repositories/sync-repository";
+import {
+  assertOnlineForSharedWrite,
+  assertSupabaseClient,
+  getAuthenticatedUserId,
+  nowTimestamp,
+  readNullableString,
+  readNumber,
+  readString
+} from "@/services/supabase-data-service";
+import { useRealtimeStore } from "@/store/realtime-store";
 import type { TransferFilters, TransferListItem, TransferRecord } from "@/types";
-import { getRangeBounds, nowIso } from "@/utils/date-utils";
-import { createId } from "@/utils/id";
+import { getRangeBounds } from "@/utils/date-utils";
+import { createUuid } from "@/utils/id";
 
 function matchesDateRange(transferDate: string, filters: TransferFilters) {
   if (filters.range === "all") {
@@ -22,29 +30,87 @@ function matchesDateRange(transferDate: string, filters: TransferFilters) {
   return isWithinInterval(parseISO(transferDate), bounds);
 }
 
+function fromTransferRow(row: Record<string, unknown>): TransferRecord {
+  return {
+    id: readString(row, "id"),
+    userId: readString(row, "user_id"),
+    fromAccountId: readString(row, "from_account_id"),
+    toAccountId: readString(row, "to_account_id"),
+    amount: readNumber(row, "amount"),
+    fee: readNumber(row, "fee"),
+    note: readString(row, "note"),
+    transferDate: readString(row, "transfer_date"),
+    createdAt: readString(row, "created_at"),
+    updatedAt: readString(row, "updated_at"),
+    deletedAt: readNullableString(row, "deleted_at")
+  };
+}
+
+function toTransferPayload(transfer: TransferRecord) {
+  return {
+    id: transfer.id,
+    user_id: transfer.userId,
+    from_account_id: transfer.fromAccountId,
+    to_account_id: transfer.toAccountId,
+    amount: transfer.amount,
+    fee: transfer.fee,
+    note: transfer.note,
+    transfer_date: transfer.transferDate,
+    created_at: transfer.createdAt,
+    updated_at: transfer.updatedAt,
+    deleted_at: transfer.deletedAt ?? null
+  };
+}
+
+function notifyTransfersChanged() {
+  useRealtimeStore.getState().markLocalMutation("transfers");
+}
+
+async function fetchTransferById(userId: string, id: string) {
+  const client = assertSupabaseClient();
+  const { data, error } = await client
+    .from("transfers")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("id", id)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data ? fromTransferRow(data) : undefined;
+}
+
 export const defaultTransferFilters: TransferFilters = {
   query: "",
   accountId: "all",
   range: "all"
 };
 
-function getTransfersTable() {
-  return getOptionalTable<TransferRecord>("transfers");
-}
-
 export const transfersRepository = {
   async listActive() {
-    const transfersTable = getTransfersTable();
-    if (!transfersTable) {
-      return [];
+    const userId = await getAuthenticatedUserId();
+    const client = assertSupabaseClient();
+    const { data, error } = await client
+      .from("transfers")
+      .select("*")
+      .eq("user_id", userId)
+      .is("deleted_at", null)
+      .order("transfer_date", { ascending: false });
+
+    if (error) {
+      throw new Error(error.message);
     }
 
-    const items = await transfersTable.filter((item) => !item.deletedAt).toArray();
-    return items.sort((left, right) => right.transferDate.localeCompare(left.transferDate));
+    return (data ?? []).map(fromTransferRow);
   },
 
   async listWithRelations(filters: TransferFilters = defaultTransferFilters): Promise<TransferListItem[]> {
-    const [transfers, accounts] = await Promise.all([this.listActive(), appDb.accounts.toArray()]);
+    const [transfers, accounts] = await Promise.all([
+      this.listActive(),
+      accountsRepository.listActive()
+    ]);
 
     return transfers
       .map((transfer) => {
@@ -76,12 +142,8 @@ export const transfersRepository = {
   },
 
   async getById(id: string) {
-    const transfersTable = getTransfersTable();
-    if (!transfersTable) {
-      return undefined;
-    }
-
-    return transfersTable.get(id);
+    const userId = await getAuthenticatedUserId();
+    return fetchTransferById(userId, id);
   },
 
   async createTransfer(input: {
@@ -93,10 +155,8 @@ export const transfersRepository = {
     transferDate: string;
     userId?: string | null;
   }) {
-    const transfersTable = getTransfersTable();
-    if (!transfersTable) {
-      throw new Error("Transfer storage is unavailable. Refresh the app and try again.");
-    }
+    assertOnlineForSharedWrite();
+    const userId = await getAuthenticatedUserId();
 
     if (!input.fromAccountId || !input.toAccountId || !input.transferDate) {
       throw new Error("From account, to account, and date are required.");
@@ -116,8 +176,8 @@ export const transfersRepository = {
     }
 
     const [fromAccount, toAccount, balances] = await Promise.all([
-      appDb.accounts.get(input.fromAccountId),
-      appDb.accounts.get(input.toAccountId),
+      accountsRepository.getById(input.fromAccountId),
+      accountsRepository.getById(input.toAccountId),
       accountsRepository.listWithBalances()
     ]);
 
@@ -136,74 +196,61 @@ export const transfersRepository = {
       throw new Error("Insufficient balance in the source account for amount plus fee.");
     }
 
-    const timestamp = nowIso();
+    const timestamp = nowTimestamp();
     const transfer: TransferRecord = {
-      id: createId("transfer"),
+      id: createUuid(),
       fromAccountId: input.fromAccountId,
       toAccountId: input.toAccountId,
       amount: input.amount,
       fee,
       note: input.note?.trim() ?? "",
       transferDate: input.transferDate,
-      userId: input.userId ?? null,
-      remoteId: null,
-      syncStatus: "pending",
-      syncError: null,
-      lastSyncedAt: null,
+      userId,
       createdAt: timestamp,
       updatedAt: timestamp,
       deletedAt: null
     };
 
-    await transfersTable.add(transfer);
-    await syncRepository.enqueue("transfers", transfer.id, "create", JSON.stringify(transfer));
-    return transfer;
+    const client = assertSupabaseClient();
+    const { data, error } = await client
+      .from("transfers")
+      .insert(toTransferPayload(transfer))
+      .select("*")
+      .single();
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    notifyTransfersChanged();
+    return fromTransferRow(data);
   },
 
   async softDelete(id: string) {
-    const transfersTable = getTransfersTable();
-    if (!transfersTable) {
-      return;
-    }
-
-    const current = await transfersTable.get(id);
+    assertOnlineForSharedWrite();
+    const userId = await getAuthenticatedUserId();
+    const current = await fetchTransferById(userId, id);
     if (!current) {
       return;
     }
 
-    const next: TransferRecord = {
-      ...current,
-      deletedAt: nowIso(),
-      syncStatus: "pending",
-      syncError: null,
-      updatedAt: nowIso()
-    };
-
-    await transfersTable.put(next);
-    await syncRepository.enqueue("transfers", next.id, "delete", JSON.stringify(next));
-  },
-
-  async stampOwnership(userId: string) {
-    const transfersTable = getTransfersTable();
-    if (!transfersTable) {
-      return;
-    }
-
-    const records = await transfersTable.toArray();
-    await Promise.all(
-      records.map((record) =>
-        transfersTable.put({
-          ...record,
-          userId,
-          syncStatus: "pending",
-          syncError: null,
-          updatedAt: nowIso()
+    const client = assertSupabaseClient();
+    const { error } = await client
+      .from("transfers")
+      .update(
+        toTransferPayload({
+          ...current,
+          deletedAt: nowTimestamp(),
+          updatedAt: nowTimestamp()
         })
       )
-    );
+      .eq("user_id", userId)
+      .eq("id", id);
 
-    await Promise.all(
-      records.map((record) => syncRepository.enqueue("transfers", record.id, "update"))
-    );
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    notifyTransfersChanged();
   }
 };

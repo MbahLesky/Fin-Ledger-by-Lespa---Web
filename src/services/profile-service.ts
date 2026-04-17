@@ -26,34 +26,51 @@ function fromProfileRow(row: Record<string, unknown>): Profile {
   };
 }
 
+async function fetchProfile(userId: string) {
+  const client = assertSupabase();
+  const { data, error } = await client.from("profiles").select("*").eq("id", userId).maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data ? fromProfileRow(data) : null;
+}
+
 export const profileService = {
   async getProfile(userId: string) {
-    const client = assertSupabase();
-    const { data, error } = await client.from("profiles").select("*").eq("id", userId).single();
+    const profile = await fetchProfile(userId);
 
-    if (error) {
-      throw new Error(error.message);
+    if (!profile) {
+      throw new Error("Profile not found.");
     }
 
-    return fromProfileRow(data);
+    return profile;
   },
 
   async ensureProfile(user: User) {
     const client = assertSupabase();
+    const existing = await fetchProfile(user.id);
+    const timestamp = new Date().toISOString();
     const payload = {
       id: user.id,
       email: user.email ?? null,
-      name: user.user_metadata?.full_name ?? user.user_metadata?.name ?? null,
-      updated_at: new Date().toISOString()
+      name: existing?.name ?? user.user_metadata?.full_name ?? user.user_metadata?.name ?? null,
+      updated_at: timestamp
     };
 
-    const { data, error } = await client
-      .from("profiles")
-      .upsert(payload, { onConflict: "id" })
-      .select("*")
-      .single();
+    const query = existing
+      ? client.from("profiles").update(payload).eq("id", user.id)
+      : client.from("profiles").insert(payload);
+
+    const { data, error } = await query.select("*").single();
 
     if (error) {
+      const profile = await fetchProfile(user.id);
+      if (profile) {
+        return profile;
+      }
+
       throw new Error(error.message);
     }
 
@@ -62,6 +79,7 @@ export const profileService = {
 
   async updateProfile(userId: string, updates: Partial<Profile>) {
     const client = assertSupabase();
+    const existing = await fetchProfile(userId);
     const payload = {
       id: userId,
       name: updates.name ?? null,
@@ -73,11 +91,11 @@ export const profileService = {
       updated_at: new Date().toISOString()
     };
 
-    const { data, error } = await client
-      .from("profiles")
-      .upsert(payload, { onConflict: "id" })
-      .select("*")
-      .single();
+    const query = existing
+      ? client.from("profiles").update(payload).eq("id", userId)
+      : client.from("profiles").insert(payload);
+
+    const { data, error } = await query.select("*").single();
 
     if (error) {
       throw new Error(error.message);
@@ -86,4 +104,3 @@ export const profileService = {
     return fromProfileRow(data);
   }
 };
-

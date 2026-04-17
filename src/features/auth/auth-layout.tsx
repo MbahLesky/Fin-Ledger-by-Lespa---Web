@@ -23,17 +23,17 @@ export function AuthLayout({ eyebrow, title, description, children }: AuthLayout
                 Make sense of every balance shift without losing your calm.
               </h1>
               <p className="text-base leading-7 text-muted-foreground">
-                Fin Tracker is designed for clear capture, reliable local storage, and a
-                polished money workflow that keeps working when your connection drops.
+                Fin Tracker is designed for clear capture, shared Supabase-backed data, and a
+                polished money workflow across web and mobile.
               </p>
             </div>
             <div className="grid max-w-xl gap-4 sm:grid-cols-2">
               <Card className="bg-card/80">
                 <CardContent className="space-y-3 p-5">
                   <WalletCards className="size-5 text-primary" />
-                  <h2 className="text-lg font-semibold">Local-first by design</h2>
+                  <h2 className="text-lg font-semibold">Shared by design</h2>
                   <p className="text-sm text-muted-foreground">
-                    Core ledger actions save into IndexedDB first, then sync safely when the browser is ready.
+                    Core ledger actions write to Supabase directly so the same account sees the same records.
                   </p>
                 </CardContent>
               </Card>

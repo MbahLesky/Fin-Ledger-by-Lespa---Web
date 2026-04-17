@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { createId } from "@/utils/id";
+import { createId, createUuid } from "@/utils/id";
 
 const originalCrypto = globalThis.crypto;
 
@@ -11,6 +11,10 @@ afterEach(() => {
 });
 
 describe("createId", () => {
+  it("creates bare UUIDs for backend UUID columns", () => {
+    expect(createUuid()).toMatch(/^[0-9a-f-]{36}$/);
+  });
+
   it("creates prefixed ids", () => {
     const id = createId("txn");
     expect(id.startsWith("txn_")).toBe(true);
@@ -32,8 +36,8 @@ describe("createId", () => {
       value: mockCrypto
     });
 
-    const id = createId("sync");
-    expect(id).toBe("sync_00010203-0405-4607-8809-0a0b0c0d0e0f");
+    const id = createId("row");
+    expect(id).toBe("row_00010203-0405-4607-8809-0a0b0c0d0e0f");
   });
 
   it("falls back when crypto is unavailable", () => {

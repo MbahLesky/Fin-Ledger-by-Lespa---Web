@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { accountsRepository } from "@/db/repositories/accounts-repository";
 import { categoriesRepository } from "@/db/repositories/categories-repository";
-import { useLiveQuery } from "dexie-react-hooks";
+import { useBackendQuery } from "@/hooks/use-backend-query";
 import type { ImportMappingChoice } from "@/types";
 
 interface ImportWorkspaceProps {
@@ -24,8 +24,8 @@ export function ImportWorkspace({
   continueTo
 }: ImportWorkspaceProps) {
   const navigate = useNavigate();
-  const accounts = useLiveQuery(() => accountsRepository.listActive(), []);
-  const categories = useLiveQuery(() => categoriesRepository.listActive(), []);
+  const { data: accounts = [] } = useBackendQuery(() => accountsRepository.listActive(), []);
+  const { data: categories = [] } = useBackendQuery(() => categoriesRepository.listActive(), []);
   const [preview, setPreview] = useState<ImportPreview | null>(null);
   const [fileName, setFileName] = useState("");
   const [accountMappings, setAccountMappings] = useState<ImportMappingChoice[]>([]);
@@ -33,8 +33,8 @@ export function ImportWorkspace({
   const [resultMessage, setResultMessage] = useState<string | null>(null);
   const [isImporting, setIsImporting] = useState(false);
 
-  const accountOptions = accounts ?? [];
-  const categoryOptions = categories ?? [];
+  const accountOptions = accounts;
+  const categoryOptions = categories;
 
   const validRowsCount = preview?.validRows.length ?? 0;
   const invalidRowsCount = preview?.invalidRows.length ?? 0;
@@ -299,7 +299,7 @@ export function ImportWorkspace({
                 </p>
               )}
               <p className="text-sm text-muted-foreground">
-                Valid rows will import into IndexedDB immediately, then follow the normal sync path later.
+                Valid rows will be written directly to Supabase. Import history stays local to this browser.
               </p>
             </div>
             <div className="flex flex-col gap-3 sm:flex-row">

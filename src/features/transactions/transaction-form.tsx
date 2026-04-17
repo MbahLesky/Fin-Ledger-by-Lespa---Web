@@ -1,11 +1,11 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useLiveQuery } from "dexie-react-hooks";
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { categoriesRepository } from "@/db/repositories/categories-repository";
 import { accountsRepository } from "@/db/repositories/accounts-repository";
 import { transactionsRepository } from "@/db/repositories/transactions-repository";
+import { useBackendQuery } from "@/hooks/use-backend-query";
 import { FieldShell } from "@/components/forms/field-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,8 +28,8 @@ export function TransactionForm({
   submitLabel = "Save transaction",
   onSubmitted
 }: TransactionFormProps) {
-  const accounts = useLiveQuery(() => accountsRepository.listActive(), []);
-  const categories = useLiveQuery(() => categoriesRepository.listActive(), []);
+  const { data: accounts = [] } = useBackendQuery(() => accountsRepository.listActive(), []);
+  const { data: categories = [] } = useBackendQuery(() => categoriesRepository.listActive(), []);
 
   const form = useForm<TransactionFormValues>({
     resolver: zodResolver(transactionSchema),
@@ -47,7 +47,7 @@ export function TransactionForm({
   const typeCategories = (categories ?? []).filter((category) => category.type === selectedType);
 
   useEffect(() => {
-    if (!form.getValues("accountId") && accounts?.[0]?.id) {
+    if (!form.getValues("accountId") && accounts[0]?.id) {
       form.setValue("accountId", accounts[0].id);
     }
   }, [accounts, form]);
@@ -70,8 +70,7 @@ export function TransactionForm({
       if (initialValue) {
         await transactionsRepository.updateTransaction(initialValue.id, {
           ...values,
-          note: values.note,
-          userId
+          note: values.note
         });
         toast.success("Transaction updated.");
       } else {
@@ -80,7 +79,7 @@ export function TransactionForm({
           note: values.note,
           userId
         });
-        toast.success("Transaction saved locally.");
+        toast.success("Transaction saved to Supabase.");
         form.reset({
           amount: 0,
           type: values.type,
@@ -98,7 +97,6 @@ export function TransactionForm({
   }
 
   return (
-    // eslint-disable-next-line @typescript-eslint/no-misused-promises
     <form className="grid gap-5" onSubmit={form.handleSubmit(onSubmit)}>
       <div className="grid gap-5 md:grid-cols-2">
         <FieldShell label="Amount" htmlFor="amount" error={form.formState.errors.amount?.message}>
@@ -156,7 +154,7 @@ export function TransactionForm({
               <SelectValue placeholder="Choose an account" />
             </SelectTrigger>
             <SelectContent>
-              {(accounts ?? []).map((account) => (
+              {accounts.map((account) => (
                 <SelectItem key={account.id} value={account.id}>
                   {account.name}
                 </SelectItem>

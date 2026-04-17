@@ -4,196 +4,138 @@
 
 ## Introduction
 
-This document defines the application modules for the web version of Finance Ledger. The business capabilities stay the same as the earlier product planning, but the implementation is now aligned to a browser-first, offline-first architecture.
+This document describes the current web modules after the sync-layer removal. The app keeps the same product capabilities, but shared business data now goes directly through Supabase.
 
 ## Core Principles
 
-- feature-first organization
-- React pages and components stay presentation-focused
-- Dexie-backed local ledger persistence
-- sync happens behind the scenes through a dedicated engine
-- Supabase owns authentication and remote profile continuity
-- local-first behavior remains the default for business data
-- responsive browser and PWA usage guide interface decisions
+- React pages stay presentation-focused.
+- Repositories and services own Supabase access.
+- Supabase is the source of truth for shared business data.
+- Supabase Realtime invalidates backend queries after changes.
+- Browser storage is reserved for local-only device data.
+- Shared-data writes are online-first and must surface failures.
 
 ## Module Overview
 
 | Module | Purpose |
 | --- | --- |
 | Authentication | Email auth, session restore, profile completion, guarded future auth entry points, and sign-out |
-| Backend Integration | Supabase client setup, auth, profile access, and remote sync APIs |
-| Sync | Outbox processing, pull reconciliation, sync status tracking, and retry handling |
-| Onboarding | Currency choice, optional import, opening balances, and reminder setup |
-| Accounts | Default/custom account management and account-derived balance context |
-| Categories | System/custom category management and type-aware category usage |
-| Transactions | Create, edit, delete, filter, and persist ledger records |
-| Transfers | Move funds across owned accounts without misclassifying transfer amount as income/expense |
-| Dashboard | Derived balance and activity summaries |
-| Analytics | Derived charts and trends from stored transactions |
-| Import/Export | CSV parsing, validation, mapping, commit/export flows, and local history |
-| Settings | Preference management, reminders, reset flow, and sign-out entry point |
-| Local Persistence | Dexie schema, repositories, migrations, seeding, and ownership-aware local storage |
-| PWA / Browser Services | installability, caching, browser notifications, connectivity, and file download/upload interaction |
+| Backend Integration | Supabase client setup, direct CRUD repositories, profile service, and realtime subscriptions |
+| Realtime State | Connection status, backend event revision, and query invalidation signals |
+| Onboarding | Currency choice, optional import, opening balances, reminder setup, and backend default seeding |
+| Accounts | Default/custom account management and balance derivation from backend records |
+| Categories | Default/custom category management and type-aware transaction classification |
+| Transactions | Create, edit, soft-delete, filter, and fetch income/expense records from Supabase |
+| Transfers | Move funds between accounts without classifying transfer amount as income/expense |
+| Dashboard | Derived balances, totals, accounts, and recent activity from backend source tables |
+| Analytics | Derived charts and trends from backend transactions and transfer fees |
+| Import/Export | CSV parsing, validation, mapping, Supabase commit/export, and local browser audit history |
+| Settings | Shared settings, reminders, reset flow, profile/session controls, and local-only history entry points |
+| Browser Services | PWA shell caching, notification permissions, file upload/download, and install prompt support |
 
-## Module Details
+## Data Modules
 
-### Authentication Module
+### Shared Backend Repositories
 
-Responsibilities:
+The repository modules in `src/db/repositories/` remain the application-facing data layer, but they now call Supabase directly:
 
-- sign up with email/password
-- sign in with email/password
-- restore Supabase browser sessions on reload
-- keep Google and phone auth visible in the UI as guarded later-phase entry points
-- route users through signed-out, profile-completion, onboarding, and signed-in states
-- expose user-facing validation and auth error mapping
+- `accounts-repository.ts`
+- `categories-repository.ts`
+- `transactions-repository.ts`
+- `transfers-repository.ts`
+- `settings-repository.ts`
+- `dashboard-repository.ts`
+- `history-repository.ts`
+- `workspace-repository.ts`
 
-### Backend Integration Module
+These repositories:
 
-Responsibilities:
+- read the active user's rows from Supabase
+- write with the authenticated `user_id`
+- rely on RLS for ownership enforcement
+- trigger local realtime invalidation after successful local writes
+- throw user-safe errors when the backend write fails
 
-- initialize the Supabase browser client early in app startup
-- load environment-based configuration
-- create, read, and update the app-level `public.profiles` row
-- keep client access limited to publishable-key behavior
+### Profile Service
 
-### Sync Module
+`profile-service.ts` owns the direct `public.profiles` integration:
 
-Responsibilities:
+- ensure profile after auth
+- read profile for the active user
+- update app-level profile fields
+- mirror onboarding and preferred currency metadata where needed
 
-- write syncable mutations to a local outbox after local commits succeed
-- push pending writes to Supabase when a session and network are available
-- pull remote changes by checkpoint or updated timestamp
-- reconcile local records with remote state
-- mark records as `pending`, `synced`, or `failed`
-- keep local-first behavior even when sync is unavailable
+### Realtime Service
 
-### Onboarding Module
+`ledger-realtime-service.ts` opens one Supabase Realtime channel per signed-in user and subscribes to shared tables. It updates `realtime-store.ts`, which causes `useBackendQuery` consumers to refetch.
 
-Responsibilities:
+### Local-Only Audit Repository
 
-- select preferred currency
-- offer `Start fresh` or `Import existing records`
-- manage opening balances
-- manage reminder setup
-- persist onboarding completion
-- continue only after the user has a valid authenticated session
+`audit-repository.ts` stores import/export history in browser local storage. This history is operational only and never becomes the source of truth for ledger records.
 
-### Accounts Module
+## Feature Modules
 
-Responsibilities:
+### Authentication
 
-- preserve default Cash and Bank accounts
-- manage custom accounts such as MoMo, Wallet, Savings, or other balance containers
-- support imported account creation or mapping
-- feed balance summaries into dashboard and analytics
-- keep account balances derived from opening balance plus transactions
+- restores Supabase sessions
+- ensures `public.profiles`
+- seeds backend defaults for settings, accounts, and categories
+- cleans in-memory state on sign-out
 
-### Categories Module
+### Onboarding
 
-Responsibilities:
+- writes currency, balances, reminders, and onboarding completion to Supabase
+- can import CSV data directly into backend records
+- uses profile metadata for route decisions
 
-- preserve system categories
-- create custom categories
-- support imported category creation or mapping
-- keep transaction and category type alignment safe
+### Accounts
 
-### Transactions Module
+- ensures default Cash and Bank accounts for each user
+- stores custom accounts in Supabase
+- derives current balances from opening balance plus transactions and transfers
 
-Responsibilities:
+### Categories
 
-- create, update, and soft-delete transactions
-- expose searchable and filterable history
-- preserve source metadata such as CSV import references
-- remain the ledger source of truth for totals, reports, and charts
+- ensures user-owned default income/expense categories for each user
+- stores custom categories in Supabase
+- soft-removes user categories with `deleted_at` and inactive state
 
-### Transfers Module
+### Transactions
 
-Responsibilities:
+- writes income/expense rows directly to Supabase
+- updates and soft-deletes backend rows
+- joins account/category labels in repository output for UI consumption
 
-- create and soft-delete account-to-account transfers
-- validate source and destination account constraints
-- enforce source balance checks for `amount + fee`
-- keep transfer amount separate from income and expense transactions
-- expose transfer rows in history with dedicated UI semantics
-- feed account balance derivation and fee-aware expense analytics
+### Transfers
 
-### Dashboard Module
+- validates source/destination account rules
+- validates available source balance before backend insert
+- keeps transfer amount separate from income/expense totals
+- includes fees in expense-side analytics
 
-Responsibilities:
+### Dashboard and Analytics
 
-- derive balance, totals, and recent activity from persisted local records
-- show account summaries and quick actions
-- expose empty states that work with true first-run data
+- derive summaries from backend source rows
+- do not persist summary tables
+- refresh when realtime events are received
 
-### Analytics Module
+### Import/Export
 
-Responsibilities:
+- import preview and mapping remain transient UI state
+- confirmed imports create backend accounts, categories, and transactions
+- export reads active backend transactions
+- import/export history stays local-only
 
-- derive totals and chart series from stored transactions
-- handle empty datasets safely
-- support responsive chart rendering across desktop and mobile browser widths
+## Removed Module
 
-### Import/Export Module
+The previous sync module is removed from the web app:
 
-Responsibilities:
-
-- read local CSV files from the browser file picker
-- parse rows and validate headers/content
-- detect duplicates conservatively
-- build account and category mapping state
-- commit valid rows through local repositories
-- generate downloadable CSV exports from stored transactions
-- record local import/export history
-
-### Settings Module
-
-Responsibilities:
-
-- persist currency, theme, and reminder preferences
-- expose import/export entry points
-- expose reset-app-data flow
-- trigger clean sign-out behavior
-- surface sync status and reconnect guidance where helpful
-
-### Local Persistence Module
-
-Responsibilities:
-
-- define Dexie schema and repositories
-- initialize settings, default accounts, and system categories once
-- keep local-only history and sync tables separate from business tables
-- stamp local rows with sync metadata
-- support deterministic schema upgrades for IndexedDB
-
-### PWA / Browser Services Module
-
-Responsibilities:
-
-- register and update the service worker
-- cache static assets for offline shell loading
-- support install prompts where browsers allow them
-- coordinate browser notification permission checks
-- handle browser file import and download flows safely
-
-## Integration Notes
-
-- Authentication depends on Backend Integration and route guards.
-- Sync depends on Local Persistence, Backend Integration, and Authentication.
-- Import/Export depends on Accounts, Categories, Transactions, and Local Persistence.
-- Dashboard and Analytics depend on derived queries, not stored summary tables.
-- Transfers depends on Accounts for validation and balance updates, and feeds Dashboard/Analytics derivations.
-- Onboarding and Settings share the same settings, accounts, and reminder persistence.
-- Profile metadata can reflect onboarding and preferred currency without moving ledger source data out of the local-first model.
-- Import/export history remains operational and local-only.
-
-## Future Expansion Notes
-
-- chatbot workflows can reuse the same domain entities and ownership rules
-- richer conflict handling can layer on top of the documented sync engine
-- server-assisted notifications can be added later without changing reminder preferences as a feature
-- additional client surfaces can consume the same Supabase-backed remote model
+- no outbox
+- no sync status store
+- no sync engine
+- no Dexie business-data source
+- no "write locally and sync later" behavior
 
 ## Summary
 
-The module boundaries still reflect the same Finance Ledger product: auth, onboarding, accounts, categories, transactions, transfers, analytics, reminders, and CSV portability. What changes is the delivery model: React pages, Dexie local storage, a dedicated sync engine, and Supabase-backed authentication and continuity.
+Finance Ledger Web modules now align around direct Supabase access, auth-scoped ownership, and realtime refresh. The UI keeps its existing feature flow while the data layer is simpler and shared across web and mobile.

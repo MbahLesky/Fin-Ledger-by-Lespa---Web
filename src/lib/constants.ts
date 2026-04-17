@@ -4,24 +4,17 @@ export const APP_NAME = "Fin Tracker";
 
 export const APP_TAGLINE = "Make financial tracking as easy as sending a message.";
 
-export const SETTINGS_ROW_ID = "app-settings";
-
-export const NOTIFICATION_PREFERENCES_ID = "notification-preferences";
-
 export const DEFAULT_ACCOUNTS: Array<{
-  id: string;
   name: string;
   type: AccountType;
   displayOrder: number;
 }> = [
   {
-    id: "default-cash",
     name: "Cash",
     type: "cash",
     displayOrder: 0
   },
   {
-    id: "default-bank",
     name: "Bank",
     type: "bank",
     displayOrder: 1
@@ -30,14 +23,12 @@ export const DEFAULT_ACCOUNTS: Array<{
 
 export const DEFAULT_CATEGORY_SEEDS = [
   {
-    id: "income-general",
     name: "General income",
     type: "income",
     iconKey: "arrow-up-right",
     colorKey: "success"
   },
   {
-    id: "expense-general",
     name: "General expense",
     type: "expense",
     iconKey: "arrow-down-right",

@@ -1,6 +1,6 @@
-import type { SyncableEntity, TransactionType } from "@/types/common";
+import type { SharedEntity, TransactionType } from "@/types/common";
 
-export interface Category extends SyncableEntity {
+export interface Category extends SharedEntity {
   name: string;
   type: TransactionType;
   iconKey?: string | null;
@@ -8,4 +8,3 @@ export interface Category extends SyncableEntity {
   isSystem: boolean;
   isActive: boolean;
 }
-

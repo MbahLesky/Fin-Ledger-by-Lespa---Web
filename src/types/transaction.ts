@@ -1,6 +1,6 @@
-import type { LedgerEntryType, SyncableEntity, TransactionType } from "@/types/common";
+import type { LedgerEntryType, SharedEntity, TransactionType } from "@/types/common";
 
-export interface TransactionRecord extends SyncableEntity {
+export interface TransactionRecord extends SharedEntity {
   accountId: string;
   categoryId: string;
   type: TransactionType;
@@ -13,8 +13,8 @@ export interface TransactionRecord extends SyncableEntity {
 export interface TransactionFilters {
   query: string;
   type: LedgerEntryType | "all";
-  categoryId: string | "all";
-  accountId: string | "all";
+  categoryId: string;
+  accountId: string;
   range: "all" | "today" | "7d" | "30d" | "custom";
   startDate?: string;
   endDate?: string;

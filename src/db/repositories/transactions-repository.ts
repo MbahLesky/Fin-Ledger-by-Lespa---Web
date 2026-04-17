@@ -1,9 +1,17 @@
 import { isWithinInterval, parseISO } from "date-fns";
-import { appDb } from "@/db/dexie";
-import type { TransactionFilters, TransactionListItem, TransactionRecord } from "@/types";
-import { getRangeBounds, nowIso } from "@/utils/date-utils";
-import { createId } from "@/utils/id";
-import { syncRepository } from "@/db/repositories/sync-repository";
+import {
+  assertOnlineForSharedWrite,
+  assertSupabaseClient,
+  getAuthenticatedUserId,
+  nowTimestamp,
+  readNullableString,
+  readNumber,
+  readString
+} from "@/services/supabase-data-service";
+import { useRealtimeStore } from "@/store/realtime-store";
+import type { TransactionFilters, TransactionListItem, TransactionRecord, TransactionType } from "@/types";
+import { getRangeBounds } from "@/utils/date-utils";
+import { createUuid } from "@/utils/id";
 
 function matchesDateRange(transactionDate: string, filters: TransactionFilters) {
   if (filters.range === "all") {
@@ -21,6 +29,89 @@ function matchesDateRange(transactionDate: string, filters: TransactionFilters) 
   return isWithinInterval(parseISO(transactionDate), bounds);
 }
 
+function fromTransactionRow(row: Record<string, unknown>): TransactionRecord {
+  return {
+    id: readString(row, "id"),
+    userId: readString(row, "user_id"),
+    amount: readNumber(row, "amount"),
+    type: readString(row, "type") as TransactionType,
+    accountId: readString(row, "account_id"),
+    categoryId: readString(row, "category_id"),
+    note: readString(row, "note"),
+    transactionDate: readString(row, "transaction_date"),
+    reference: readNullableString(row, "reference"),
+    createdAt: readString(row, "created_at"),
+    updatedAt: readString(row, "updated_at"),
+    deletedAt: readNullableString(row, "deleted_at")
+  };
+}
+
+function toTransactionPayload(transaction: TransactionRecord) {
+  return {
+    id: transaction.id,
+    user_id: transaction.userId,
+    account_id: transaction.accountId,
+    category_id: transaction.categoryId,
+    type: transaction.type,
+    amount: transaction.amount,
+    note: transaction.note,
+    transaction_date: transaction.transactionDate,
+    reference: transaction.reference ?? null,
+    created_at: transaction.createdAt,
+    updated_at: transaction.updatedAt,
+    deleted_at: transaction.deletedAt ?? null
+  };
+}
+
+function notifyTransactionsChanged() {
+  useRealtimeStore.getState().markLocalMutation("transactions");
+}
+
+async function fetchTransactionById(userId: string, id: string) {
+  const client = assertSupabaseClient();
+  const { data, error } = await client
+    .from("transactions")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("id", id)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data ? fromTransactionRow(data) : undefined;
+}
+
+async function fetchRelationRows(userId: string) {
+  const client = assertSupabaseClient();
+  const [accountsResult, categoriesResult] = await Promise.all([
+    client
+      .from("accounts")
+      .select("id,name,currency_code")
+      .eq("user_id", userId)
+      .is("deleted_at", null),
+    client
+      .from("categories")
+      .select("id,name,color_key")
+      .eq("user_id", userId)
+      .is("deleted_at", null)
+  ]);
+
+  if (accountsResult.error) {
+    throw new Error(accountsResult.error.message);
+  }
+
+  if (categoriesResult.error) {
+    throw new Error(categoriesResult.error.message);
+  }
+
+  return {
+    accounts: (accountsResult.data ?? []) as Array<Record<string, unknown>>,
+    categories: (categoriesResult.data ?? []) as Array<Record<string, unknown>>
+  };
+}
+
 export const defaultTransactionFilters: TransactionFilters = {
   query: "",
   type: "all",
@@ -31,36 +122,49 @@ export const defaultTransactionFilters: TransactionFilters = {
 
 export const transactionsRepository = {
   async listActive() {
-    const items = await appDb.transactions.filter((item) => !item.deletedAt).toArray();
-    return items.sort((left, right) => right.transactionDate.localeCompare(left.transactionDate));
+    const userId = await getAuthenticatedUserId();
+    const client = assertSupabaseClient();
+    const { data, error } = await client
+      .from("transactions")
+      .select("*")
+      .eq("user_id", userId)
+      .is("deleted_at", null)
+      .order("transaction_date", { ascending: false });
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return (data ?? []).map(fromTransactionRow);
   },
 
   async listWithRelations(filters: TransactionFilters = defaultTransactionFilters): Promise<TransactionListItem[]> {
-    const [transactions, accounts, categories] = await Promise.all([
+    const userId = await getAuthenticatedUserId();
+    const [transactions, relations] = await Promise.all([
       this.listActive(),
-      appDb.accounts.toArray(),
-      appDb.categories.toArray()
+      fetchRelationRows(userId)
     ]);
 
     return transactions
       .map((transaction) => {
-        const account = accounts.find((item) => item.id === transaction.accountId);
-        const category = categories.find((item) => item.id === transaction.categoryId);
+        const account = relations.accounts.find((item) => readString(item, "id") === transaction.accountId);
+        const category = relations.categories.find((item) => readString(item, "id") === transaction.categoryId);
 
         return {
           ...transaction,
-          accountName: account?.name ?? "Unknown account",
-          accountCurrencyCode: account?.currencyCode ?? "USD",
-          categoryName: category?.name ?? "Unknown category",
-          categoryColorKey: category?.colorKey ?? null
+          accountName: account ? readString(account, "name") : "Unknown account",
+          accountCurrencyCode: account ? readString(account, "currency_code", "USD") : "USD",
+          categoryName: category ? readString(category, "name") : "Unknown category",
+          categoryColorKey: category ? readNullableString(category, "color_key") : null
         };
       })
       .filter((transaction) => {
+        const query = filters.query.trim().toLowerCase();
         const matchesQuery =
-          filters.query.length === 0 ||
-          transaction.note.toLowerCase().includes(filters.query.toLowerCase()) ||
-          transaction.accountName.toLowerCase().includes(filters.query.toLowerCase()) ||
-          transaction.categoryName.toLowerCase().includes(filters.query.toLowerCase());
+          query.length === 0 ||
+          transaction.note.toLowerCase().includes(query) ||
+          transaction.accountName.toLowerCase().includes(query) ||
+          transaction.categoryName.toLowerCase().includes(query);
 
         const matchesType = filters.type === "all" || transaction.type === filters.type;
         const matchesCategory =
@@ -78,7 +182,8 @@ export const transactionsRepository = {
   },
 
   async getById(id: string) {
-    return appDb.transactions.get(id);
+    const userId = await getAuthenticatedUserId();
+    return fetchTransactionById(userId, id);
   },
 
   async createTransaction(input: {
@@ -91,9 +196,11 @@ export const transactionsRepository = {
     reference?: string | null;
     userId?: string | null;
   }) {
-    const timestamp = nowIso();
+    assertOnlineForSharedWrite();
+    const userId = await getAuthenticatedUserId();
+    const timestamp = nowTimestamp();
     const transaction: TransactionRecord = {
-      id: createId("txn"),
+      id: createUuid(),
       amount: input.amount,
       type: input.type,
       accountId: input.accountId,
@@ -101,61 +208,74 @@ export const transactionsRepository = {
       note: input.note?.trim() ?? "",
       transactionDate: input.transactionDate,
       reference: input.reference ?? null,
-      userId: input.userId ?? null,
-      remoteId: null,
-      syncStatus: "pending",
-      syncError: null,
-      lastSyncedAt: null,
+      userId,
       createdAt: timestamp,
       updatedAt: timestamp,
       deletedAt: null
     };
 
-    await appDb.transactions.add(transaction);
-    await syncRepository.enqueue("transactions", transaction.id, "create", JSON.stringify(transaction));
-    return transaction;
+    const client = assertSupabaseClient();
+    const { data, error } = await client
+      .from("transactions")
+      .insert(toTransactionPayload(transaction))
+      .select("*")
+      .single();
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    notifyTransactionsChanged();
+    return fromTransactionRow(data);
   },
 
   async updateTransaction(
     id: string,
     updates: Partial<
-      Pick<TransactionRecord, "amount" | "type" | "accountId" | "categoryId" | "note" | "transactionDate" | "reference" | "userId">
+      Pick<TransactionRecord, "amount" | "type" | "accountId" | "categoryId" | "note" | "transactionDate" | "reference" | "userId" | "deletedAt">
     >
   ) {
-    const current = await appDb.transactions.get(id);
+    assertOnlineForSharedWrite();
+    const userId = await getAuthenticatedUserId();
+    const current = await fetchTransactionById(userId, id);
+
     if (!current) {
       throw new Error("Transaction not found.");
     }
 
-    const next: TransactionRecord = {
-      ...current,
-      ...updates,
-      syncStatus: "pending",
-      syncError: null,
-      updatedAt: nowIso()
-    };
+    const client = assertSupabaseClient();
+    const { data, error } = await client
+      .from("transactions")
+      .update(
+        toTransactionPayload({
+          ...current,
+          ...updates,
+          userId,
+          updatedAt: nowTimestamp()
+        })
+      )
+      .eq("user_id", userId)
+      .eq("id", id)
+      .select("*")
+      .single();
 
-    await appDb.transactions.put(next);
-    await syncRepository.enqueue("transactions", next.id, "update", JSON.stringify(next));
-    return next;
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    notifyTransactionsChanged();
+    return fromTransactionRow(data);
   },
 
   async softDelete(id: string) {
-    const current = await appDb.transactions.get(id);
+    const current = await this.getById(id);
     if (!current) {
       return;
     }
 
-    const next: TransactionRecord = {
-      ...current,
-      deletedAt: nowIso(),
-      syncStatus: "pending",
-      syncError: null,
-      updatedAt: nowIso()
-    };
-
-    await appDb.transactions.put(next);
-    await syncRepository.enqueue("transactions", next.id, "delete", JSON.stringify(next));
+    await this.updateTransaction(id, {
+      deletedAt: nowTimestamp()
+    });
   },
 
   async findLikelyDuplicate(input: {
@@ -168,22 +288,11 @@ export const transactionsRepository = {
     const transactions = await this.listActive();
     return transactions.find(
       (transaction) =>
-        transaction.transactionDate === input.transactionDate &&
+        transaction.transactionDate.slice(0, 10) === input.transactionDate.slice(0, 10) &&
         transaction.type === input.type &&
         transaction.amount === input.amount &&
         transaction.accountId === input.accountId &&
         transaction.note.trim().toLowerCase() === input.note.trim().toLowerCase()
-    );
-  },
-
-  async stampOwnership(userId: string) {
-    const records = await appDb.transactions.toArray();
-    await Promise.all(
-      records.map((record) =>
-        this.updateTransaction(record.id, {
-          userId
-        })
-      )
     );
   }
 };

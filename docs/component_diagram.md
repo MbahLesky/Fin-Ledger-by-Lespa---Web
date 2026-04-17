@@ -1,63 +1,44 @@
 # Component Diagram
 
-*Finance Ledger - Offline-First Web Component View*
+*Finance Ledger - Direct Supabase Web Component View*
 
 ## Purpose
 
-This document describes the active components in the Finance Ledger web application and the future components the architecture reserves space for.
+This document describes the active web components after removing the sync layer.
 
-## Current Component Groups
+## Active Component Groups
 
-- presentation components
+- React presentation components
 - route and provider components
-- local data components
-- auth and backend foundation components
-- browser service components
-- sync and integration components
+- Supabase-backed repository components
+- auth/profile services
+- realtime subscription and status components
+- browser-only operational services
 
-## Active Components
+## Components
 
 | Component | Responsibility |
 | --- | --- |
-| React Pages and Layouts | Auth, onboarding, dashboard, transactions, analytics, settings, import, and export views |
-| Shared UI Components | Reusable cards, inputs, dialogs, charts, layouts, and display widgets |
+| React Pages and Layouts | Auth, onboarding, dashboard, transactions, transfers, analytics, settings, import, and export views |
+| Shared UI Components | Cards, inputs, dialogs, tables, charts, empty states, and backend status displays |
 | React Router | Route definitions and guarded navigation |
-| Zustand Stores | Expose app-facing state and coordinate workflow actions |
-| Dexie Database | Local persistence entry point for ledger data and sync metadata |
-| Dexie Repositories | Query and write focused slices of local data |
-| Database Bootstrap Layer | Initialize defaults and seed the local workspace safely |
-| Sync Engine | Push pending changes, pull remote changes, and reconcile local state |
-| Supabase Client | Connect to Supabase using environment-based configuration |
-| Supabase Auth Service | Manage email auth, session restore, sign-out, and future OAuth or OTP extension points |
-| Profile Service | Manage the app-level `public.profiles` row |
-| PWA Service Worker | Cache the app shell and static assets for offline loading |
-| Reminder Service | Coordinate browser notification permission and reminder prompts |
-
-## Additional Components
-
-| Component | Planned Responsibility |
-| --- | --- |
-| Backend APIs / Integrations | Chatbot, webhooks, future automation, and server-side processing |
-| Edge Functions or Workers | Later server-side workflows where client-only behavior becomes insufficient |
+| Auth Store | Session, user, profile, profile refresh, sign-in, sign-up, sign-out |
+| Realtime Store | Connection status, backend event revision, last event metadata |
+| Repository Modules | Supabase CRUD and derived query boundaries |
+| Supabase Client | Browser client for Auth, PostgREST, and Realtime |
+| Supabase Auth Service | Email auth, session restore, sign-out |
+| Profile Service | `public.profiles` ensure/read/update |
+| Ledger Realtime Service | One scoped channel per signed-in user |
+| Audit Repository | Local-only import/export history |
+| Import/Export Services | CSV parse, validation, mapping, commit, and browser download |
+| PWA Shell | Static shell caching and installability |
+| Reminder Hooks | Browser permission and device-specific notification capability |
 
 ## Data Components
 
-### Active Local Business Tables
+### Shared Supabase Tables
 
-- accounts
-- categories
-- transactions
-- transfers
-- settings
-- notification preferences
-
-### Active Remote Identity/Profile Tables
-
-- `auth.users`
-- `public.profiles`
-
-### Active Remote Ledger Tables
-
+- `profiles`
 - `accounts`
 - `categories`
 - `transactions`
@@ -65,81 +46,93 @@ This document describes the active components in the Finance Ledger web applicat
 - `settings`
 - `notification_preferences`
 
-### Local-Only Tables
+### Local-Only Browser Data
 
-- import records
-- export records
-- sync operations
+- import history
+- export history
+- transient import mapping state
+- browser notification permission state
+- UI filters and view state
 
 ### Derived Components
 
-- dashboard summary builders
-- analytics summary builders
-- account balance derivation
+- dashboard summary
+- account balance snapshots
+- ledger history projection
+- analytics snapshots
 
 ## Key Interaction Flows
 
-### Authentication and Profile Provisioning
+### Authentication and Backend Bootstrap
 
-1. User signs in or signs up with email/password, while phone and Google remain visible as upcoming options.
-2. Auth services call Supabase Auth.
-3. Session state updates reactively.
-4. The profile service loads or upserts `public.profiles`.
-5. Router sends the user to profile completion, onboarding, or dashboard.
+1. User signs in with Supabase Auth.
+2. Auth store hydrates session and user.
+3. Profile service ensures `public.profiles`.
+4. Workspace repository seeds settings, default accounts, and user-owned default categories in Supabase when missing.
+5. Realtime service subscribes to the active user's backend rows.
 
 ### Manual Transaction Entry
 
-1. User submits a transaction in the web UI.
+1. User submits a transaction form.
 2. Form validation prepares the payload.
-3. Dexie repository writes the record to IndexedDB.
-4. Sync engine records the local mutation for later upload.
-5. Zustand selectors and local queries update the visible state.
-6. Dashboard and analytics recompute from persisted source records.
+3. Transaction repository inserts the row directly in Supabase.
+4. Repository marks a local realtime revision for immediate UI refresh.
+5. Supabase Realtime also broadcasts the backend change.
+6. Dashboard, history, and analytics queries refetch.
 
-### Manual Transfer Entry
+### Transfer Entry
 
-1. User opens transfer flow from dashboard or transactions area.
-2. Form validation checks account selection, amount, fee, and source balance.
-3. Dexie repository writes the transfer row to IndexedDB.
-4. Sync engine records the local mutation for later upload.
-5. Account balances recompute locally from transactions plus transfers.
-6. History and analytics refresh with transfer-safe semantics.
+1. User chooses source/destination accounts and amount.
+2. Transfer repository validates source balance from backend-derived balances.
+3. Transfer is inserted in Supabase.
+4. History and balance views refresh through realtime invalidation.
 
-### Onboarding and Settings
+### Import
 
-1. User updates currency, balances, or reminders.
-2. Stores and services write to Dexie-backed settings and accounts data.
-3. Profile metadata may be mirrored to `public.profiles`.
-4. Reminder side effects are coordinated separately where needed.
+1. User selects a CSV file.
+2. Import service parses and validates in memory.
+3. User confirms mappings.
+4. Created accounts/categories/transactions are written to Supabase.
+5. Import history is stored locally on the device.
 
-### Import and Export
+### Export
 
-1. User chooses a local CSV import or export action.
-2. The import/export services coordinate parsing, validation, mapping, and persistence.
-3. Import/export history is stored locally without becoming syncable business data.
+1. Export service reads active backend transactions.
+2. Browser downloads CSV.
+3. Export history is stored locally on the device.
 
 ## Mermaid Component Diagram
 
 ```mermaid
 flowchart LR
-    UI[React Pages and Components] --> STORE[Zustand Stores and Feature Services]
-    UI --> ROUTER[React Router]
-    STORE --> REPO[Dexie Repositories]
-    REPO --> DB[(IndexedDB via Dexie)]
-    STORE --> AUTH[Supabase Auth Service]
-    STORE --> PROFILE[Profile Service]
-    STORE --> SYNC[Sync Engine]
-    AUTH --> SA[Supabase Auth]
-    PROFILE --> SP[(public.profiles)]
-    SYNC --> REMOTE[(Remote Ledger Tables)]
-    UI --> SW[PWA Service Worker]
-    STORE --> REMINDER[Reminder Service]
-    DB --> LEDGER[Local Ledger Tables]
-    DB --> OPS[Local Sync and Import/Export Tables]
-    STORE --> DERIVED[Derived Dashboard and Analytics]
-    REMOTE -. future .-> API[Backend APIs and Integrations]
+    UI["React Pages and Components"] --> HOOK["useBackendQuery"]
+    UI --> ROUTER["React Router"]
+    UI --> STORE["Zustand Stores"]
+    HOOK --> REPO["Supabase-backed Repositories"]
+    REPO --> SB["Supabase Client"]
+    STORE --> AUTH["Supabase Auth Service"]
+    STORE --> PROFILE["Profile Service"]
+    STORE --> RTSTORE["Realtime Store"]
+    AUTH --> SA["Supabase Auth"]
+    PROFILE --> PROFILES["public.profiles"]
+    SB --> TABLES["Shared Ledger Tables"]
+    RTSVC["Ledger Realtime Service"] --> RTSTORE
+    RTSVC --> TABLES
+    RTSTORE --> HOOK
+    IMPORT["Import/Export Services"] --> REPO
+    IMPORT --> LOCAL["Local-only Browser History"]
+    UI --> SW["PWA Shell"]
 ```
+
+## Removed Components
+
+- Dexie database
+- sync engine
+- sync outbox repository
+- sync status store
+- sync status banner
+- local business-data source tables
 
 ## Summary
 
-The component architecture preserves the same Finance Ledger product flow while changing the client platform to the browser. React renders the experience, Dexie holds the local truth, the sync engine bridges to Supabase, and the PWA shell keeps the app usable when the network is unreliable.
+React renders the product, repositories talk directly to Supabase, realtime invalidates backend queries, and browser storage is limited to local-only operational history.

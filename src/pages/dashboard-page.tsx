@@ -1,4 +1,3 @@
-import { useLiveQuery } from "dexie-react-hooks";
 import {
   ArrowRightLeft,
   ArrowRight,
@@ -12,33 +11,35 @@ import {
 import { useNavigate } from "react-router-dom";
 import { EmptyState } from "@/components/data-display/empty-state";
 import { MetricCard } from "@/components/data-display/metric-card";
-import { SyncBanner } from "@/components/data-display/sync-banner";
+import { RealtimeStatusBanner } from "@/components/data-display/realtime-status-banner";
 import { PageShell } from "@/components/layout/page-shell";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { dashboardRepository } from "@/db/repositories/dashboard-repository";
 import { settingsRepository } from "@/db/repositories/settings-repository";
+import { useBackendQuery } from "@/hooks/use-backend-query";
 import { useNetworkStatus } from "@/hooks/use-network-status";
-import { useSyncStatus } from "@/hooks/use-sync-status";
 import { ROUTES } from "@/routes/route-constants";
-import { useAuthStore } from "@/store/auth-store";
+import { useRealtimeStore } from "@/store/realtime-store";
 import { formatCurrency } from "@/utils/formatting";
 
 export function DashboardPage() {
   const navigate = useNavigate();
-  const dashboard = useLiveQuery(() => dashboardRepository.getSnapshot(), []);
-  const settings = useLiveQuery(() => settingsRepository.getSettings(), []);
-  const syncState = useSyncStatus();
+  const dashboardQuery = useBackendQuery(() => dashboardRepository.getSnapshot(), []);
+  const settingsQuery = useBackendQuery(() => settingsRepository.getSettings(), []);
   const isOnline = useNetworkStatus();
-  const userId = useAuthStore((state) => state.user?.id);
+  const refreshBackendData = () => useRealtimeStore.getState().markLocalMutation("manual-refresh");
+  const dashboard = dashboardQuery.data;
+  const settings = settingsQuery.data;
   const selectedCurrencyCode = settings?.currencyCode ?? "USD";
+  const queryError = dashboardQuery.error ?? settingsQuery.error;
 
   const hasTransactions = (dashboard?.recentTransactions.length ?? 0) > 0;
 
   return (
     <PageShell
       title="Dashboard"
-      description="See your current balance, quick totals, accounts, and the latest activity without waiting on a remote round trip."
+      description="See your current balance, quick totals, accounts, and latest backend-backed activity."
       action={
         <Button onClick={() => navigate(ROUTES.addTransaction)}>
           <Plus className="size-4" />
@@ -46,14 +47,16 @@ export function DashboardPage() {
         </Button>
       }
     >
-      <SyncBanner
-        pending={syncState.pending}
-        failed={syncState.failed}
-        processing={syncState.processing}
-        lastSyncedAt={syncState.lastSyncedAt}
+      <RealtimeStatusBanner
         isOnline={isOnline}
-        onRetry={userId ? () => void syncState.runNow(userId) : undefined}
+        onReconnect={refreshBackendData}
       />
+
+      {queryError ? (
+        <div className="rounded-xl border border-accent/30 bg-accent/5 p-4 text-sm text-accent">
+          {queryError}
+        </div>
+      ) : null}
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <MetricCard
@@ -67,7 +70,7 @@ export function DashboardPage() {
           value={formatCurrency(dashboard?.totalIncome ?? 0, selectedCurrencyCode)}
           icon={TrendingUp}
           tone="secondary"
-          trendLabel="Stored locally first"
+          trendLabel="From shared backend data"
         />
         <MetricCard
           label="Total expenses"

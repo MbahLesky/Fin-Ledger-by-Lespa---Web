@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { useLiveQuery } from "dexie-react-hooks";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -13,6 +12,7 @@ import { accountsRepository } from "@/db/repositories/accounts-repository";
 import { categoriesRepository } from "@/db/repositories/categories-repository";
 import { settingsRepository } from "@/db/repositories/settings-repository";
 import { workspaceRepository } from "@/db/repositories/workspace-repository";
+import { useBackendQuery } from "@/hooks/use-backend-query";
 import { SUPPORTED_CURRENCIES } from "@/lib/constants";
 import { ROUTES } from "@/routes/route-constants";
 import { useAuthStore } from "@/store/auth-store";
@@ -25,10 +25,13 @@ export function SettingsPage() {
   const saveProfile = useAuthStore((state) => state.saveProfile);
   const signOut = useAuthStore((state) => state.signOut);
   const userId = useAuthStore((state) => state.user?.id ?? null);
-  const settings = useLiveQuery(() => settingsRepository.getSettings(), []);
-  const reminderPreferences = useLiveQuery(() => settingsRepository.getNotificationPreferences(), []);
-  const accounts = useLiveQuery(() => accountsRepository.listActive(), []);
-  const categories = useLiveQuery(() => categoriesRepository.listActive(), []);
+  const { data: settings } = useBackendQuery(() => settingsRepository.getSettings(), []);
+  const { data: reminderPreferences } = useBackendQuery(
+    () => settingsRepository.getNotificationPreferences(),
+    []
+  );
+  const { data: accounts = [] } = useBackendQuery(() => accountsRepository.listActive(), []);
+  const { data: categories = [] } = useBackendQuery(() => categoriesRepository.listActive(), []);
   const setThemeMode = useUiStore((state) => state.setThemeMode);
 
   const [accountBalances, setAccountBalances] = useState<Record<string, string>>({});
@@ -38,7 +41,7 @@ export function SettingsPage() {
   const [newCategoryType, setNewCategoryType] = useState<TransactionType>("expense");
 
   useEffect(() => {
-    if (!accounts) {
+    if (!accounts.length) {
       return;
     }
 
@@ -48,28 +51,40 @@ export function SettingsPage() {
   }, [accounts]);
 
   async function handleCurrencyChange(currencyCode: string) {
-    await settingsRepository.setCurrency(currencyCode);
-    await accountsRepository.syncDefaultAccountCurrency(currencyCode);
-    await saveProfile({
-      preferredCurrency: currencyCode
-    });
-    toast.success("Currency updated.");
+    try {
+      await settingsRepository.setCurrency(currencyCode);
+      await accountsRepository.updateDefaultAccountCurrency(currencyCode);
+      await saveProfile({
+        preferredCurrency: currencyCode
+      });
+      toast.success("Currency updated.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to update currency.");
+    }
   }
 
   async function handleThemeChange(themeMode: "light" | "dark" | "system") {
-    await settingsRepository.setThemeMode(themeMode);
-    setThemeMode(themeMode);
-    toast.success("Theme preference saved.");
+    try {
+      await settingsRepository.setThemeMode(themeMode);
+      setThemeMode(themeMode);
+      toast.success("Theme preference saved.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to save theme preference.");
+    }
   }
 
   async function handleSaveBalances() {
-    await accountsRepository.saveOpeningBalances(
-      Object.entries(accountBalances).map(([id, balance]) => ({
-        id,
-        balance: Number(balance || 0)
-      }))
-    );
-    toast.success("Opening balances updated.");
+    try {
+      await accountsRepository.saveOpeningBalances(
+        Object.entries(accountBalances).map(([id, balance]) => ({
+          id,
+          balance: Number(balance || 0)
+        }))
+      );
+      toast.success("Opening balances updated.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to save opening balances.");
+    }
   }
 
   async function handleAddAccount() {
@@ -78,17 +93,21 @@ export function SettingsPage() {
       return;
     }
 
-    await accountsRepository.createAccount({
-      name: newAccountName,
-      type: newAccountType,
-      initialBalance: 0,
-      currencyCode: settings?.currencyCode ?? "USD",
-      userId
-    });
+    try {
+      await accountsRepository.createAccount({
+        name: newAccountName,
+        type: newAccountType,
+        initialBalance: 0,
+        currencyCode: settings?.currencyCode ?? "USD",
+        userId
+      });
 
-    setNewAccountName("");
-    setNewAccountType("other");
-    toast.success("Custom account added.");
+      setNewAccountName("");
+      setNewAccountType("other");
+      toast.success("Custom account added.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to add account.");
+    }
   }
 
   async function handleAddCategory() {
@@ -97,30 +116,77 @@ export function SettingsPage() {
       return;
     }
 
-    await categoriesRepository.createCategory({
-      name: newCategoryName,
-      type: newCategoryType,
-      userId
-    });
+    try {
+      await categoriesRepository.createCategory({
+        name: newCategoryName,
+        type: newCategoryType,
+        userId
+      });
 
-    setNewCategoryName("");
-    setNewCategoryType("expense");
-    toast.success("Custom category added.");
+      setNewCategoryName("");
+      setNewCategoryType("expense");
+      toast.success("Custom category added.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to add category.");
+    }
   }
 
   async function handleReset() {
-    await workspaceRepository.resetAppData();
-    await saveProfile({
-      onboardingCompleted: false,
-      preferredCurrency: null
-    });
-    toast.success("App data reset. Onboarding is starting over.");
-    navigate(ROUTES.onboardingCurrency);
+    try {
+      await workspaceRepository.resetAppData();
+      await saveProfile({
+        onboardingCompleted: false,
+        preferredCurrency: null
+      });
+      toast.success("App data reset. Onboarding is starting over.");
+      navigate(ROUTES.onboardingCurrency);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to reset app data.");
+    }
   }
 
   async function handleSignOut() {
-    await signOut();
-    navigate(ROUTES.login);
+    try {
+      await signOut();
+      navigate(ROUTES.login);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to log out.");
+    }
+  }
+
+  async function handleReminderEnabled(enabled: boolean) {
+    try {
+      await settingsRepository.updateNotificationPreferences({ enabled });
+      toast.success("Reminder preference saved.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to update reminders.");
+    }
+  }
+
+  async function handleReminderTime(reminderTime: string) {
+    try {
+      await settingsRepository.updateNotificationPreferences({ reminderTime });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to update reminder time.");
+    }
+  }
+
+  async function handleArchiveAccount(id: string) {
+    try {
+      await accountsRepository.softDelete(id);
+      toast.success("Account archived.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to archive account.");
+    }
+  }
+
+  async function handleRemoveCategory(id: string) {
+    try {
+      await categoriesRepository.softDelete(id);
+      toast.success("Category removed.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to remove category.");
+    }
   }
 
   return (
@@ -205,11 +271,7 @@ export function SettingsPage() {
               </div>
               <Switch
                 checked={reminderPreferences?.enabled ?? false}
-                onCheckedChange={(enabled) =>
-                  void settingsRepository.updateNotificationPreferences({
-                    enabled
-                  })
-                }
+                onCheckedChange={(enabled) => void handleReminderEnabled(enabled)}
               />
             </div>
             <div className="grid gap-2">
@@ -218,11 +280,7 @@ export function SettingsPage() {
                 type="time"
                 value={reminderPreferences?.reminderTime ?? "20:00"}
                 disabled={!reminderPreferences?.enabled}
-                onChange={(event) =>
-                  void settingsRepository.updateNotificationPreferences({
-                    reminderTime: event.target.value
-                  })
-                }
+                onChange={(event) => void handleReminderTime(event.target.value)}
               />
             </div>
           </CardContent>
@@ -251,7 +309,7 @@ export function SettingsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4">
-          {(accounts ?? []).map((account) => (
+          {accounts.map((account) => (
             <div key={account.id} className="grid gap-3 rounded-xl border border-border/70 p-4 md:grid-cols-[1fr,180px,auto] md:items-end">
               <div>
                 <p className="font-semibold">{account.name}</p>
@@ -272,7 +330,7 @@ export function SettingsPage() {
                 />
               </div>
               {!account.isDefault ? (
-                <Button variant="ghost" onClick={() => void accountsRepository.softDelete(account.id)}>
+                <Button variant="ghost" onClick={() => void handleArchiveAccount(account.id)}>
                   Archive
                 </Button>
               ) : (
@@ -315,19 +373,19 @@ export function SettingsPage() {
         <CardHeader>
           <CardTitle>Category management</CardTitle>
           <CardDescription>
-            System categories stay available, while custom categories can be added or removed.
+            Default income and expense categories are created for your account, and categories can be added or removed.
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4">
           <div className="grid gap-3 md:grid-cols-2">
-            {(categories ?? []).map((category) => (
+            {categories.map((category) => (
               <div key={category.id} className="flex items-center justify-between rounded-xl border border-border/70 p-4">
                 <div>
                   <p className="font-semibold">{category.name}</p>
                   <p className="text-xs capitalize text-muted-foreground">{category.type}</p>
                 </div>
                 {!category.isSystem ? (
-                  <Button variant="ghost" onClick={() => void categoriesRepository.softDelete(category.id)}>
+                  <Button variant="ghost" onClick={() => void handleRemoveCategory(category.id)}>
                     Remove
                   </Button>
                 ) : null}
@@ -365,7 +423,7 @@ export function SettingsPage() {
         <CardHeader>
           <CardTitle>Reset app data</CardTitle>
           <CardDescription>
-            This clears the local workspace, reseeds system defaults, and restarts onboarding.
+            This clears your Supabase-backed ledger data for this account, reseeds account defaults, and restarts onboarding.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -375,9 +433,9 @@ export function SettingsPage() {
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>Reset local app data?</AlertDialogTitle>
+                <AlertDialogTitle>Reset app data?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  This clears transactions, categories, accounts, reminders, import/export history, and sync metadata in this browser. System defaults will be re-created and onboarding will restart.
+                  This clears transactions, categories, accounts, reminders, settings, and local import/export history for this signed-in account. Default records will be re-created and onboarding will restart.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>

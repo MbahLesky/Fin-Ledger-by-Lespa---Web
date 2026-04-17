@@ -3,7 +3,7 @@ import { create } from "zustand";
 import { isSupabaseConfigured } from "@/lib/env";
 import { profileService } from "@/services/profile-service";
 import { supabaseAuthService } from "@/services/supabase-auth-service";
-import { useSyncStore } from "@/store/sync-store";
+import { useRealtimeStore } from "@/store/realtime-store";
 import type { Profile } from "@/types";
 import { workspaceRepository } from "@/db/repositories/workspace-repository";
 
@@ -23,6 +23,7 @@ interface AuthState {
   signUp: (fullName: string, email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   saveProfile: (updates: Partial<Profile>) => Promise<void>;
+  refreshProfile: () => Promise<void>;
   clearMessages: () => void;
 }
 
@@ -40,8 +41,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   notice: null,
 
   bootstrap: async () => {
-    await workspaceRepository.initialize();
-
     if (!isSupabaseConfigured) {
       set({
         status: "signed_out",
@@ -77,7 +76,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
 
     const profile = await profileService.ensureProfile(session.user);
-    await workspaceRepository.stampOwnership(session.user.id);
+    await workspaceRepository.initializeForUser(session.user.id);
 
     set({
       status: "signed_in",
@@ -86,8 +85,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       profile,
       error: null
     });
-
-    await useSyncStore.getState().runNow(session.user.id);
   },
 
   signIn: async (email, password) => {
@@ -124,6 +121,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       error: null,
       notice: null
     });
+    useRealtimeStore.getState().reset();
   },
 
   saveProfile: async (updates) => {
@@ -141,10 +139,20 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({
       profile: nextProfile
     });
+    useRealtimeStore.getState().markLocalMutation("profiles");
+  },
+
+  refreshProfile: async () => {
+    const currentUser = get().user;
+    if (!currentUser) {
+      return;
+    }
+
+    const profile = await profileService.getProfile(currentUser.id);
+    set({ profile });
   },
 
   clearMessages: () => set({ error: null, notice: null })
 }));
 
 export { isProfileComplete };
-

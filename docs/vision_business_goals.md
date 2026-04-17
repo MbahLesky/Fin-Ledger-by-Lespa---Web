@@ -53,7 +53,7 @@ Provide a lightweight and intuitive platform that helps users log transactions e
 - Improve trend analysis and spending breakdowns.
 - Enhance chatbot intelligence and input recognition.
 - Expand chat integrations to additional platforms such as Telegram.
-- Improve overall user experience, sync reliability, and performance.
+- Improve overall user experience, backend data reliability, and performance.
 
 ### Long-Term Goals (18+ Months)
 

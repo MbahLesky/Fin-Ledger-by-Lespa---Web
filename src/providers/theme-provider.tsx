@@ -1,5 +1,6 @@
 import { useEffect, type ReactNode } from "react";
 import { settingsRepository } from "@/db/repositories/settings-repository";
+import { useRealtimeStore } from "@/store/realtime-store";
 import { useUiStore } from "@/store/ui-store";
 
 interface ThemeProviderProps {
@@ -9,12 +10,13 @@ interface ThemeProviderProps {
 export function ThemeProvider({ children }: ThemeProviderProps) {
   const themeMode = useUiStore((state) => state.themeMode);
   const setThemeMode = useUiStore((state) => state.setThemeMode);
+  const revision = useRealtimeStore((state) => state.revision);
 
   useEffect(() => {
     void settingsRepository.getSettings().then((settings) => {
       setThemeMode(settings.themeMode);
     });
-  }, [setThemeMode]);
+  }, [revision, setThemeMode]);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -27,4 +29,3 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
 
   return children;
 }
-

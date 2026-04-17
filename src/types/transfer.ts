@@ -1,6 +1,6 @@
-import type { SyncableEntity } from "@/types/common";
+import type { SharedEntity } from "@/types/common";
 
-export interface TransferRecord extends SyncableEntity {
+export interface TransferRecord extends SharedEntity {
   fromAccountId: string;
   toAccountId: string;
   amount: number;
@@ -11,7 +11,7 @@ export interface TransferRecord extends SyncableEntity {
 
 export interface TransferFilters {
   query: string;
-  accountId: string | "all";
+  accountId: string;
   range: "all" | "today" | "7d" | "30d" | "custom";
   startDate?: string;
   endDate?: string;

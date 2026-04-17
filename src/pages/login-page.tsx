@@ -48,7 +48,7 @@ export function LoginPage() {
     <AuthLayout
       eyebrow="Welcome back"
       title="Log in"
-      description="Use your email and password to restore your session, sync your local ledger, and continue where you left off."
+      description="Use your email and password to restore your session and load your shared Supabase ledger."
     >
       <form className="grid gap-5" onSubmit={form.handleSubmit(onSubmit)}>
         {!authAvailable ? (
@@ -131,4 +131,3 @@ export function LoginPage() {
     </AuthLayout>
   );
 }
-

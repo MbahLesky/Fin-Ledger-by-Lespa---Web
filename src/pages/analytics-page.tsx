@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import { useLiveQuery } from "dexie-react-hooks";
 import {
   Area,
   AreaChart,
@@ -17,6 +16,7 @@ import { PageShell } from "@/components/layout/page-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { settingsRepository } from "@/db/repositories/settings-repository";
 import { transactionsRepository } from "@/db/repositories/transactions-repository";
+import { useBackendQuery } from "@/hooks/use-backend-query";
 import { formatCurrency } from "@/utils/formatting";
 import { LineChart as LineChartIcon } from "lucide-react";
 import { analyticsService } from "@/services/analytics-service";
@@ -24,13 +24,16 @@ import { analyticsService } from "@/services/analytics-service";
 const CHART_COLORS = ["#173B7A", "#0F8C83", "#E1644C", "#4B6FAF", "#57B9B1", "#F39A87"];
 
 export function AnalyticsPage() {
-  const transactions = useLiveQuery(() => transactionsRepository.listWithRelations(), []);
-  const analytics = useLiveQuery(() => analyticsService.getSnapshots(), []);
-  const settings = useLiveQuery(() => settingsRepository.getSettings(), []);
+  const { data: transactions = [], error: transactionsError } = useBackendQuery(
+    () => transactionsRepository.listWithRelations(),
+    []
+  );
+  const { data: analytics } = useBackendQuery(() => analyticsService.getSnapshots(), []);
+  const { data: settings } = useBackendQuery(() => settingsRepository.getSettings(), []);
   const selectedCurrencyCode = settings?.currencyCode ?? "USD";
 
   const averageExpense = useMemo(() => {
-    const expenses = (transactions ?? []).filter((transaction) => transaction.type === "expense");
+    const expenses = transactions.filter((transaction) => transaction.type === "expense");
     if (expenses.length === 0) {
       return 0;
     }
@@ -38,11 +41,21 @@ export function AnalyticsPage() {
     return expenses.reduce((sum, transaction) => sum + transaction.amount, 0) / expenses.length;
   }, [transactions]);
 
-  if ((transactions ?? []).length === 0) {
+  if (transactionsError) {
+    return (
+      <PageShell title="Analytics" description="Review monthly trends and expense concentration from Supabase data.">
+        <div className="rounded-xl border border-accent/30 bg-accent/5 p-4 text-sm text-accent">
+          {transactionsError}
+        </div>
+      </PageShell>
+    );
+  }
+
+  if (transactions.length === 0) {
     return (
       <PageShell
         title="Analytics"
-        description="Derived charts and breakdowns read from your stored local transactions, not from separate summary tables."
+        description="Derived charts and breakdowns read from shared Supabase transactions, not separate summary tables."
       >
         <EmptyState
           icon={LineChartIcon}
@@ -56,7 +69,7 @@ export function AnalyticsPage() {
   return (
     <PageShell
       title="Analytics"
-      description="Review monthly trends and expense concentration from the same local transaction source that drives the dashboard."
+      description="Review monthly trends and expense concentration from the same shared backend source that drives the dashboard."
     >
       <div className="grid gap-4 md:grid-cols-3">
         <Card>

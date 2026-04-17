@@ -1,139 +1,116 @@
 # Coding Standards
 
-*Project: Finance Ledger Web*
+*Finance Ledger Web*
 
 ## Purpose
 
-This document defines the coding standards for the Finance Ledger web application across frontend code, local persistence, sync logic, Supabase integration, and shared utilities.
+This document defines coding standards for the current direct-Supabase React web app.
 
 ## Core Principles
 
 - write for humans first
-- prefer clarity over cleverness
-- keep code consistent across features
-- give each file, component, hook, and service one clear responsibility
-- keep local-first behavior explicit in data-writing code
-- validate inputs at the form or service boundary
-- keep browser, sync, and backend details out of simple UI components
+- keep components presentation-focused
+- keep Supabase access inside services or repositories
+- validate at form and service boundaries
+- keep auth ownership explicit
+- surface backend write failures clearly
+- reserve browser storage for local-only data
+- do not reintroduce the removed sync layer
 
-## Naming Conventions
+## Project Organization
 
-### General Rules
+- route entry points live in `src/pages/`
+- feature forms and schemas live in `src/features/`
+- reusable UI primitives live in `src/components/`
+- Supabase-backed repositories live in `src/db/repositories/`
+- Supabase client setup lives in `src/lib/`
+- external/service integrations live in `src/services/`
+- app-facing state lives in focused Zustand stores under `src/store/`
+- local-only browser persistence must be documented in the owning repository or service
 
-- use names that reveal intent
-- avoid vague names such as `data`, `item`, or `temp` when better context is available
-- use action-based names for functions and noun-based names for types and components
+## React Standards
 
-### TypeScript Style
+- use functional components with typed props
+- keep raw Supabase calls out of presentational components
+- use hooks for reusable React behavior
+- keep side effects in hooks, stores, or services
+- show loading, empty, and error states for backend-backed UI
+- do not add UI text that suggests offline shared-data saves
 
-- use `kebab-case` for filenames unless the codebase adopts a stronger convention for specific file types
-- use `camelCase` for variables, functions, hooks, and store actions
-- use `PascalCase` for React components, TypeScript types, and Zod schemas exported as named objects
-- use `UPPER_SNAKE_CASE` for true compile-time constants
+## Data Access Standards
 
-## Project Organization Rules
+- shared data reads go through repository/service functions
+- shared data writes go directly to Supabase
+- writes must use the current authenticated session and `user_id`
+- never trust a caller-supplied `userId` over the active session
+- rely on RLS as the backend ownership boundary
+- use soft delete for active ledger removal where supported
+- do not store shared business records as browser-only data
 
-- keep route entry points in `src/pages/`
-- keep feature-specific code inside `src/features/`
-- keep reusable UI primitives in `src/components/`
-- keep Dexie schema, repositories, and local migrations in `src/db/`
-- keep Supabase and external SDK setup in `src/lib/` or `src/services/`
-- keep app-facing state in focused Zustand stores under `src/store/`
+## Realtime Standards
 
-## React and Component Standards
+- keep one realtime subscription per signed-in user
+- centralize subscription setup in a service
+- filter subscriptions by user-owned rows
+- clean up subscriptions on logout or user change
+- use realtime events to invalidate/refetch backend queries
+- show reconnect/offline status without implying an offline mutation queue
 
-- prefer functional components with TypeScript props
-- keep presentational components free of direct persistence and Supabase calls
-- co-locate small feature-only components with their feature
-- lift shared UI only when reuse is real
-- use route/page components to compose feature sections, not to own all business logic
-- keep side effects in hooks or services rather than inline across render code
+## Local-Only Storage Standards
 
-## Hook Standards
+Allowed:
 
-- custom hooks should start with `use`
-- hooks should encapsulate reusable React behavior, not become hidden service layers for every domain operation
-- keep hooks deterministic and dependency-safe
-- prefer returning clear named fields over opaque tuples unless the pattern is obvious
+- import/export history
+- temporary import mapping state
+- dismissed local UI hints
+- device notification permission state
+- transient UI filters
 
-## Zustand Standards
+Not allowed:
 
-- stores should hold UI-facing state, orchestration state, and user-triggered actions
-- stores should not replace Dexie as the durable source of truth
-- avoid copying entire persistent datasets into long-lived store state when a repository query or live subscription is more appropriate
-- expose selectors for frequently consumed slices to reduce unnecessary rerenders
+- accounts
+- categories
+- transactions
+- transfers
+- shared settings
+- shared notification preferences
+- profiles
+
+## Supabase Standards
+
+- centralize client creation
+- never expose service-role credentials
+- keep auth/profile/table access behind named services
+- return domain-shaped objects from repositories
+- translate Supabase errors into user-safe messages at UI boundaries
+- keep migrations aligned with TypeScript types and docs
 
 ## Form and Validation Standards
 
 - use React Hook Form for user-editable forms
-- use Zod for schema validation and input parsing
-- keep validation schemas close to the feature that owns them
-- map validation errors into user-readable messages
-- validate imported CSV data before it reaches persistence code
-
-## Supabase Standards
-
-- create and share Supabase clients through a centralized setup module
-- never scatter raw environment reads across components
-- keep auth, profile, and remote sync operations inside services or repositories
-- never expose service-role credentials in the web client
-- rely on RLS and authenticated ownership instead of trusting client-only filters
-
-## Dexie and Sync Standards
-
-- Dexie repositories own local CRUD boundaries
-- all syncable writes must succeed locally before being enqueued for remote sync
-- sync metadata fields such as `sync_status`, `sync_error`, and `last_synced_at` must be updated consistently
-- use soft delete for syncable entities unless a documented exception exists
-- schema migrations must be explicit, tested, and reversible in intent
-
-## Routing Standards
-
-- define route constants centrally
-- use route guards for signed-out, onboarding, and protected areas
-- avoid hard-coded route strings spread across features
-- align page URLs with product language users understand
-
-## Formatting and Tooling
-
-- use Prettier for formatting
-- use ESLint for linting
-- use TypeScript strictness appropriate for production code
-- avoid manual formatting that drifts from project tooling
-
-## Commenting Standards
-
-Comments should explain **why**, not restate the obvious.
-
-Good uses:
-
-- non-obvious finance rules
-- sync edge cases
-- browser capability constraints
-- import/export quirks
-
-Poor uses:
-
-- restating the code
-- keeping outdated notes after refactors
-- leaving TODOs without clear intent
+- use Zod for validation schemas
+- parse numeric inputs before persistence
+- validate CSV rows before backend writes
+- show validation and backend errors clearly
 
 ## Testing Expectations
 
-- test critical financial calculations
-- test transaction validation and category matching
-- test import and export flows with valid and invalid samples
-- test sync queue and retry behavior
-- test onboarding persistence and route guards
-- add regression tests when fixing bugs
+- test financial calculations and balance derivation
+- test transaction and transfer validation
+- test CSV import parsing and duplicate handling
+- test auth-aware state cleanup where practical
+- test repository failure paths when adding risky data changes
 
-## Review Standards
+## Removed Patterns
 
-- keep changes focused and understandable
-- prefer small, reviewable changes over mixed rewrites
-- do not merge code with unclear naming, weak validation, or missing critical test coverage
-- review for correctness, readability, maintainability, offline behavior, and sync risk
+Do not add:
+
+- Dexie business-data tables
+- local outbox writes
+- `sync_status` or `last_synced_at` fields
+- "save locally, upload later" flows for shared records
+- PowerSync or equivalent sync-layer code in this phase
 
 ## Summary
 
-The coding standard for Finance Ledger Web is simple: keep the React code clean, keep persistence boundaries explicit, keep sync logic disciplined, and make the offline-first behavior easy for future contributors to understand and extend.
+Finance Ledger Web should stay simple and direct: React UI, service/repository boundaries, Supabase as source of truth, realtime refresh, and local browser storage only for device-specific operational data.

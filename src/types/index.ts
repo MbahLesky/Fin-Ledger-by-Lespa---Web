@@ -5,6 +5,5 @@ export * from "@/types/history";
 export * from "@/types/import-export";
 export * from "@/types/profile";
 export * from "@/types/settings";
-export * from "@/types/sync";
 export * from "@/types/transfer";
 export * from "@/types/transaction";
