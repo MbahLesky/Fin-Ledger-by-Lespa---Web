@@ -26,7 +26,7 @@ create table if not exists public.accounts (
   id text not null,
   user_id uuid not null references auth.users (id) on delete cascade,
   name text not null,
-  type text not null,
+  type text not null check (type in ('cash', 'bank', 'mobile_money', 'wallet', 'savings', 'other')),
   initial_balance numeric not null default 0,
   currency_code text not null,
   is_default boolean not null default false,

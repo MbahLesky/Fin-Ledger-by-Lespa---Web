@@ -98,6 +98,7 @@ export function TransactionForm({
   }
 
   return (
+    // eslint-disable-next-line @typescript-eslint/no-misused-promises
     <form className="grid gap-5" onSubmit={form.handleSubmit(onSubmit)}>
       <div className="grid gap-5 md:grid-cols-2">
         <FieldShell label="Amount" htmlFor="amount" error={form.formState.errors.amount?.message}>

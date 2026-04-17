@@ -89,6 +89,7 @@ Optional fields:
 Validation:
 
 - name must not be empty
+- type must be one of `Cash`, `Bank`, `Mobile Money`, `Savings`, or `Other`
 - default accounts `Cash` and `Bank` must remain available
 - imported accounts may be matched to existing records or created during import
 

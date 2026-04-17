@@ -294,7 +294,9 @@ export function SettingsPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="other">Other</SelectItem>
-                  <SelectItem value="mobile_money">Mobile money</SelectItem>
+                  <SelectItem value="cash">Cash</SelectItem>
+                  <SelectItem value="bank">Bank</SelectItem>
+                  <SelectItem value="mobile_money">Mobile Money</SelectItem>
                   <SelectItem value="wallet">Wallet</SelectItem>
                   <SelectItem value="savings">Savings</SelectItem>
                 </SelectContent>
