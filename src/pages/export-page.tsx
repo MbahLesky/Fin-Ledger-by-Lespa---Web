@@ -14,21 +14,36 @@ export function ExportPage() {
   async function handleExport() {
     try {
       await csvExportService.exportTransactions();
-      toast.success("CSV export downloaded.");
+      toast.success("Transactions CSV downloaded.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Unable to export data.");
+    }
+  }
+
+  async function handleExportTransfers() {
+    try {
+      await csvExportService.exportTransfers();
+      toast.success("Transfers CSV downloaded.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to export transfers.");
     }
   }
 
   return (
     <PageShell
       title="Export data"
-      description="Generate a spreadsheet-friendly CSV backup of all active transactions stored in this local workspace."
+      description="Generate spreadsheet-friendly CSV backups of the transactions and transfers stored in this local workspace."
       action={
-        <Button onClick={() => void handleExport()}>
-          <Download className="size-4" />
-          Export CSV
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button onClick={() => void handleExport()}>
+            <Download className="size-4" />
+            Export transactions
+          </Button>
+          <Button variant="outline" onClick={() => void handleExportTransfers()}>
+            <Download className="size-4" />
+            Export transfers
+          </Button>
+        </div>
       }
     >
       <Card>

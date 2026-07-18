@@ -33,7 +33,7 @@ export const historyRepository = {
       .filter((transaction) => {
         const matchesQuery =
           query.length === 0 ||
-          transaction.note.toLowerCase().includes(query) ||
+          transaction.description.toLowerCase().includes(query) ||
           transaction.accountName.toLowerCase().includes(query) ||
           transaction.categoryName.toLowerCase().includes(query);
 
@@ -56,10 +56,11 @@ export const historyRepository = {
         entryType: transaction.type,
         amount: transaction.amount,
         fee: 0,
-        note: transaction.note,
+        description: transaction.description,
         occurredAt: transaction.transactionDate,
         accountLabel: transaction.accountName,
         categoryLabel: transaction.categoryName,
+        categoryIconKey: transaction.categoryIconKey,
         accountId: transaction.accountId,
         currencyCode: transaction.accountCurrencyCode
       }));
@@ -68,7 +69,7 @@ export const historyRepository = {
       .filter((transfer) => {
         const matchesQuery =
           query.length === 0 ||
-          transfer.note.toLowerCase().includes(query) ||
+          transfer.description.toLowerCase().includes(query) ||
           transfer.fromAccountName.toLowerCase().includes(query) ||
           transfer.toAccountName.toLowerCase().includes(query);
 
@@ -93,10 +94,11 @@ export const historyRepository = {
         entryType: "transfer",
         amount: transfer.amount,
         fee: transfer.fee,
-        note: transfer.note,
+        description: transfer.description,
         occurredAt: transfer.transferDate,
         accountLabel: `${transfer.fromAccountName} -> ${transfer.toAccountName}`,
         categoryLabel: "Transfer",
+        categoryIconKey: null,
         accountId: null,
         fromAccountId: transfer.fromAccountId,
         toAccountId: transfer.toAccountId,

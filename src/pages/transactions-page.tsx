@@ -27,6 +27,7 @@ import { transfersRepository } from "@/db/repositories/transfers-repository";
 import { settingsRepository } from "@/db/repositories/settings-repository";
 import { transactionsRepository } from "@/db/repositories/transactions-repository";
 import { TransactionForm } from "@/features/transactions/transaction-form";
+import { TransferForm } from "@/features/transfers/transfer-form";
 import { ROUTES } from "@/routes/route-constants";
 import { useTransactionFiltersStore } from "@/store/transaction-filters-store";
 import { useAuthStore } from "@/store/auth-store";
@@ -35,7 +36,7 @@ import { useNavigate } from "react-router-dom";
 
 export function TransactionsPage() {
   const navigate = useNavigate();
-  const userId = useAuthStore((state) => state.user?.id ?? null);
+  const userId = useAuthStore((state) => state.user?.uid ?? null);
   const filters = useTransactionFiltersStore((state) => state.filters);
   const setFilters = useTransactionFiltersStore((state) => state.setFilters);
   const accounts = useLiveQuery(() => accountsRepository.listActive(), []);
@@ -43,11 +44,16 @@ export function TransactionsPage() {
   const historyItems = useLiveQuery(() => historyRepository.listWithRelations(filters), [filters]);
   const settings = useLiveQuery(() => settingsRepository.getSettings(), []);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingTransferId, setEditingTransferId] = useState<string | null>(null);
   const editingTransaction = useLiveQuery(
     () => (editingId ? transactionsRepository.getById(editingId) : undefined),
     [editingId]
   );
-  const selectedCurrencyCode = settings?.currencyCode ?? "USD";
+  const editingTransfer = useLiveQuery(
+    () => (editingTransferId ? transfersRepository.getById(editingTransferId) : undefined),
+    [editingTransferId]
+  );
+  const selectedCurrencyCode = settings?.currencyCode ?? "XAF";
   const hasRows = (historyItems ?? []).length > 0;
 
   return (
@@ -192,7 +198,7 @@ export function TransactionsPage() {
                   <TableCell>{item.categoryLabel ?? "-"}</TableCell>
                   <TableCell>{item.accountLabel}</TableCell>
                   <TableCell className="max-w-xs truncate text-muted-foreground">
-                    {item.note || "No note"}
+                    {item.description || "No note"}
                   </TableCell>
                   <TableCell className={item.entryType === "income" ? "text-secondary" : item.entryType === "expense" ? "text-accent" : ""}>
                     {item.entryType === "income" ? "+" : item.entryType === "expense" ? "-" : ""}
@@ -205,12 +211,16 @@ export function TransactionsPage() {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
-                      {item.kind === "transaction" ? (
-                        <Button variant="ghost" size="sm" onClick={() => setEditingId(item.id)}>
-                          <Pencil className="size-4" />
-                          Edit
-                        </Button>
-                      ) : null}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() =>
+                          item.kind === "transaction" ? setEditingId(item.id) : setEditingTransferId(item.id)
+                        }
+                      >
+                        <Pencil className="size-4" />
+                        Edit
+                      </Button>
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
                           <Button variant="ghost" size="sm" className="text-accent hover:text-accent">
@@ -259,6 +269,22 @@ export function TransactionsPage() {
               userId={userId}
               submitLabel="Save changes"
               onSubmitted={() => setEditingId(null)}
+            />
+          ) : null}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={Boolean(editingTransfer)} onOpenChange={(open) => !open && setEditingTransferId(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit transfer</DialogTitle>
+          </DialogHeader>
+          {editingTransfer ? (
+            <TransferForm
+              initialValue={editingTransfer}
+              userId={userId}
+              submitLabel="Save changes"
+              onSubmitted={() => setEditingTransferId(null)}
             />
           ) : null}
         </DialogContent>

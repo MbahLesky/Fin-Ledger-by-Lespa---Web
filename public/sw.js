@@ -1,11 +1,10 @@
-const CACHE_NAME = "finance-ledger-shell-v2";
+const CACHE_NAME = "monilog-shell-v1";
 const APP_SHELL = [
   "/",
   "/index.html",
   "/offline.html",
   "/manifest.webmanifest",
-  "/icons/icon-192.svg",
-  "/icons/icon-512.svg"
+  "/icons/fin_track_logo.png"
 ];
 
 self.addEventListener("install", (event) => {

@@ -2,7 +2,6 @@ import Papa from "papaparse";
 import { accountsRepository } from "@/db/repositories/accounts-repository";
 import { auditRepository } from "@/db/repositories/audit-repository";
 import { categoriesRepository } from "@/db/repositories/categories-repository";
-import { settingsRepository } from "@/db/repositories/settings-repository";
 import { transactionsRepository } from "@/db/repositories/transactions-repository";
 import type {
   ImportMappingChoice,
@@ -208,7 +207,6 @@ export const csvImportService = {
     categoryMappings: ImportMappingChoice[];
     userId?: string | null;
   }) {
-    const settings = await settingsRepository.getSettings();
     const createdAccounts = new Map<string, string>();
     const createdCategories = new Map<string, string>();
     let successfulRows = 0;
@@ -222,8 +220,7 @@ export const csvImportService = {
       const account = await accountsRepository.createAccount({
         name: mapping.sourceName,
         type: "other",
-        initialBalance: 0,
-        currencyCode: settings.currencyCode,
+        openingBalance: 0,
         userId: input.userId ?? null
       });
 
@@ -274,7 +271,7 @@ export const csvImportService = {
         type: row.type,
         amount: row.amount,
         accountId,
-        note: row.note
+        description: row.note
       });
 
       if (duplicate) {
@@ -287,9 +284,8 @@ export const csvImportService = {
         type: row.type,
         accountId,
         categoryId,
-        note: row.note,
+        description: row.note,
         transactionDate: row.date,
-        reference: `Imported from ${input.fileName}`,
         userId: input.userId ?? null
       });
 

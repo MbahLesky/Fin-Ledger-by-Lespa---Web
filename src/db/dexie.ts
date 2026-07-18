@@ -51,6 +51,78 @@ export class FinanceLedgerDatabase extends Dexie {
       syncOperations: "id, entityName, entityId, [entityName+entityId], status, updatedAt, createdAt"
     });
 
+    // v3 aligns the web data model with the Flutter app (source of truth):
+    // account.openingBalance, category.isDefault, transaction.description +
+    // affectsAccountBalance, transfer source/destination fees, and settings
+    // language + tutorial state. See src/db/seed/default-records.ts.
+    this.version(3)
+      .stores({
+        accounts: "id, userId, name, type, syncStatus, updatedAt, deletedAt, displayOrder",
+        categories: "id, userId, [type+name], syncStatus, updatedAt, deletedAt, isDefault",
+        transactions:
+          "id, userId, accountId, categoryId, transactionDate, type, syncStatus, updatedAt, deletedAt",
+        transfers:
+          "id, userId, fromAccountId, toAccountId, transferDate, syncStatus, updatedAt, deletedAt",
+        settings: "id, userId, updatedAt, onboardingComplete",
+        notificationPreferences: "id, userId, updatedAt, enabled",
+        importRecords: "id, createdAt, status",
+        exportRecords: "id, createdAt",
+        syncOperations: "id, entityName, entityId, [entityName+entityId], status, updatedAt, createdAt"
+      })
+      .upgrade(async (tx) => {
+        await tx.table("accounts").toCollection().modify((account: Record<string, unknown>) => {
+          if (account.openingBalance === undefined) {
+            account.openingBalance = account.initialBalance ?? 0;
+          }
+          delete account.initialBalance;
+          delete account.currencyCode;
+          delete account.isArchived;
+        });
+
+        await tx.table("categories").toCollection().modify((category: Record<string, unknown>) => {
+          if (category.isDefault === undefined) {
+            category.isDefault = Boolean(category.isSystem);
+          }
+          delete category.isSystem;
+          delete category.isActive;
+        });
+
+        await tx.table("transactions").toCollection().modify((transaction: Record<string, unknown>) => {
+          if (transaction.description === undefined) {
+            transaction.description = transaction.note ?? "";
+          }
+          if (transaction.affectsAccountBalance === undefined) {
+            transaction.affectsAccountBalance = true;
+          }
+          delete transaction.note;
+          delete transaction.reference;
+        });
+
+        await tx.table("transfers").toCollection().modify((transfer: Record<string, unknown>) => {
+          const fee = Number(transfer.fee ?? 0);
+          if (transfer.sourceFee === undefined) {
+            transfer.sourceFee = fee;
+          }
+          if (transfer.destinationFee === undefined) {
+            transfer.destinationFee = 0;
+          }
+          transfer.fee = Number(transfer.sourceFee ?? 0) + Number(transfer.destinationFee ?? 0);
+          if (transfer.description === undefined) {
+            transfer.description = transfer.note ?? "";
+          }
+          delete transfer.note;
+        });
+
+        await tx.table("settings").toCollection().modify((settings: Record<string, unknown>) => {
+          if (settings.language === undefined) {
+            settings.language = "en";
+          }
+          if (settings.tutorialCompletedIds === undefined) {
+            settings.tutorialCompletedIds = [];
+          }
+        });
+      });
+
     this.accounts = this.table("accounts");
     this.categories = this.table("categories");
     this.transactions = this.table("transactions");

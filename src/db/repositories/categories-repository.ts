@@ -15,7 +15,7 @@ async function ensureDefaultCategories() {
 export const categoriesRepository = {
   async listActive() {
     await ensureDefaultCategories();
-    const categories = await appDb.categories.filter((item) => !item.deletedAt && item.isActive).toArray();
+    const categories = await appDb.categories.filter((item) => !item.deletedAt).toArray();
     return categories.sort((left, right) => left.name.localeCompare(right.name));
   },
 
@@ -36,7 +36,6 @@ export const categoriesRepository = {
       .filter(
         (category) =>
           !category.deletedAt &&
-          category.isActive &&
           category.type === type &&
           category.name.trim().toLowerCase() === normalized
       )
@@ -57,8 +56,7 @@ export const categoriesRepository = {
       type: input.type,
       colorKey: input.colorKey ?? (input.type === "income" ? "success" : "danger"),
       iconKey: input.iconKey ?? null,
-      isSystem: false,
-      isActive: true,
+      isDefault: false,
       userId: input.userId ?? null,
       remoteId: null,
       syncStatus: "pending",
@@ -76,7 +74,7 @@ export const categoriesRepository = {
 
   async updateCategory(
     id: string,
-    updates: Partial<Pick<Category, "name" | "colorKey" | "iconKey" | "isActive" | "userId">>
+    updates: Partial<Pick<Category, "name" | "colorKey" | "iconKey" | "userId">>
   ) {
     const current = await appDb.categories.get(id);
     if (!current) {
@@ -98,13 +96,12 @@ export const categoriesRepository = {
 
   async softDelete(id: string) {
     const category = await appDb.categories.get(id);
-    if (!category || category.isSystem) {
+    if (!category || category.isDefault) {
       return;
     }
 
     const next: Category = {
       ...category,
-      isActive: false,
       deletedAt: nowIso(),
       syncStatus: "pending",
       syncError: null,
@@ -126,4 +123,3 @@ export const categoriesRepository = {
     );
   }
 };
-

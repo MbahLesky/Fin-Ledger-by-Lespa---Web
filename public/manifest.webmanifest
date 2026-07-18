@@ -1,6 +1,6 @@
 {
-  "name": "Fin Tracker",
-  "short_name": "Fin Tracker",
+  "name": "Monilog",
+  "short_name": "Monilog",
   "description": "Track income, expenses, and balances offline first with calm, clear financial insight.",
   "theme_color": "#173B7A",
   "background_color": "#F3F6FB",
@@ -9,16 +9,10 @@
   "scope": "/",
   "icons": [
     {
-      "src": "/icons/icon-192.svg",
-      "sizes": "192x192",
-      "type": "image/svg+xml",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "/icons/icon-512.svg",
-      "sizes": "512x512",
-      "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "src": "/icons/fin_track_logo.png",
+      "sizes": "1721x1141",
+      "type": "image/png",
+      "purpose": "any"
     }
   ]
 }

@@ -1,5 +1,6 @@
 import { isWithinInterval, parseISO } from "date-fns";
 import { appDb } from "@/db/dexie";
+import { settingsRepository } from "@/db/repositories/settings-repository";
 import type { TransactionFilters, TransactionListItem, TransactionRecord } from "@/types";
 import { getRangeBounds, nowIso } from "@/utils/date-utils";
 import { createId } from "@/utils/id";
@@ -36,29 +37,33 @@ export const transactionsRepository = {
   },
 
   async listWithRelations(filters: TransactionFilters = defaultTransactionFilters): Promise<TransactionListItem[]> {
-    const [transactions, accounts, categories] = await Promise.all([
+    const [transactions, accounts, categories, settings] = await Promise.all([
       this.listActive(),
       appDb.accounts.toArray(),
-      appDb.categories.toArray()
+      appDb.categories.toArray(),
+      settingsRepository.getSettings()
     ]);
 
     return transactions
       .map((transaction) => {
         const account = accounts.find((item) => item.id === transaction.accountId);
-        const category = categories.find((item) => item.id === transaction.categoryId);
+        const category = transaction.categoryId
+          ? categories.find((item) => item.id === transaction.categoryId)
+          : undefined;
 
         return {
           ...transaction,
           accountName: account?.name ?? "Unknown account",
-          accountCurrencyCode: account?.currencyCode ?? "USD",
-          categoryName: category?.name ?? "Unknown category",
-          categoryColorKey: category?.colorKey ?? null
+          accountCurrencyCode: settings.currencyCode,
+          categoryName: category?.name ?? "Uncategorized",
+          categoryColorKey: category?.colorKey ?? null,
+          categoryIconKey: category?.iconKey ?? null
         };
       })
       .filter((transaction) => {
         const matchesQuery =
           filters.query.length === 0 ||
-          transaction.note.toLowerCase().includes(filters.query.toLowerCase()) ||
+          transaction.description.toLowerCase().includes(filters.query.toLowerCase()) ||
           transaction.accountName.toLowerCase().includes(filters.query.toLowerCase()) ||
           transaction.categoryName.toLowerCase().includes(filters.query.toLowerCase());
 
@@ -85,10 +90,10 @@ export const transactionsRepository = {
     amount: number;
     type: TransactionRecord["type"];
     accountId: string;
-    categoryId: string;
-    note?: string;
+    categoryId: string | null;
+    description?: string;
+    affectsAccountBalance?: boolean;
     transactionDate: string;
-    reference?: string | null;
     userId?: string | null;
   }) {
     const timestamp = nowIso();
@@ -97,10 +102,10 @@ export const transactionsRepository = {
       amount: input.amount,
       type: input.type,
       accountId: input.accountId,
-      categoryId: input.categoryId,
-      note: input.note?.trim() ?? "",
+      categoryId: input.categoryId ?? null,
+      description: input.description?.trim() ?? "",
+      affectsAccountBalance: input.affectsAccountBalance ?? true,
       transactionDate: input.transactionDate,
-      reference: input.reference ?? null,
       userId: input.userId ?? null,
       remoteId: null,
       syncStatus: "pending",
@@ -119,7 +124,10 @@ export const transactionsRepository = {
   async updateTransaction(
     id: string,
     updates: Partial<
-      Pick<TransactionRecord, "amount" | "type" | "accountId" | "categoryId" | "note" | "transactionDate" | "reference" | "userId">
+      Pick<
+        TransactionRecord,
+        "amount" | "type" | "accountId" | "categoryId" | "description" | "affectsAccountBalance" | "transactionDate" | "userId"
+      >
     >
   ) {
     const current = await appDb.transactions.get(id);
@@ -163,7 +171,7 @@ export const transactionsRepository = {
     type: TransactionRecord["type"];
     amount: number;
     accountId: string;
-    note: string;
+    description: string;
   }) {
     const transactions = await this.listActive();
     return transactions.find(
@@ -172,7 +180,7 @@ export const transactionsRepository = {
         transaction.type === input.type &&
         transaction.amount === input.amount &&
         transaction.accountId === input.accountId &&
-        transaction.note.trim().toLowerCase() === input.note.trim().toLowerCase()
+        transaction.description.trim().toLowerCase() === input.description.trim().toLowerCase()
     );
   },
 

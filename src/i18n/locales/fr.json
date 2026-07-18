@@ -1,0 +1,43 @@
+{
+  "nav": {
+    "dashboard": "Tableau de bord",
+    "transactions": "Transactions",
+    "add": "Ajouter",
+    "analytics": "Analyses",
+    "settings": "Paramètres",
+    "transfer": "Transfert",
+    "addTransaction": "Ajouter une transaction",
+    "transferMoney": "Transférer de l'argent",
+    "exportData": "Exporter les données",
+    "import": "Importer"
+  },
+  "common": {
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "delete": "Supprimer",
+    "edit": "Modifier",
+    "logout": "Se déconnecter",
+    "continue": "Continuer",
+    "skip": "Ignorer pour l'instant"
+  },
+  "settings": {
+    "title": "Paramètres",
+    "profileSession": "Profil et session",
+    "name": "Nom",
+    "email": "E-mail",
+    "preferences": "Préférences",
+    "currency": "Devise",
+    "language": "Langue",
+    "theme": "Thème",
+    "english": "Anglais",
+    "french": "Français",
+    "light": "Clair",
+    "dark": "Sombre",
+    "system": "Système",
+    "tutorials": "Tutoriels",
+    "replayTour": "Revoir la visite guidée",
+    "backup": "Sauvegarde et restauration",
+    "createBackup": "Créer une sauvegarde",
+    "restoreBackup": "Restaurer une sauvegarde"
+  }
+}

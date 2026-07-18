@@ -1,0 +1,43 @@
+{
+  "nav": {
+    "dashboard": "Dashboard",
+    "transactions": "Transactions",
+    "add": "Add",
+    "analytics": "Analytics",
+    "settings": "Settings",
+    "transfer": "Transfer",
+    "addTransaction": "Add transaction",
+    "transferMoney": "Transfer money",
+    "exportData": "Export data",
+    "import": "Import"
+  },
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "logout": "Log out",
+    "continue": "Continue",
+    "skip": "Skip for now"
+  },
+  "settings": {
+    "title": "Settings",
+    "profileSession": "Profile and session",
+    "name": "Name",
+    "email": "Email",
+    "preferences": "Preferences",
+    "currency": "Currency",
+    "language": "Language",
+    "theme": "Theme",
+    "english": "English",
+    "french": "French",
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System",
+    "tutorials": "Tutorials",
+    "replayTour": "Replay app tour",
+    "backup": "Backup and restore",
+    "createBackup": "Create backup",
+    "restoreBackup": "Restore backup"
+  }
+}

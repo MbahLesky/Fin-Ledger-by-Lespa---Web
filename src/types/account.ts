@@ -3,10 +3,8 @@ import type { AccountType, SyncableEntity } from "@/types/common";
 export interface Account extends SyncableEntity {
   name: string;
   type: AccountType;
-  initialBalance: number;
-  currencyCode: string;
+  openingBalance: number;
   isDefault: boolean;
-  isArchived: boolean;
   displayOrder: number;
 }
 
@@ -15,4 +13,3 @@ export interface AccountBalanceSnapshot extends Account {
   incomeTotal: number;
   expenseTotal: number;
 }
-

@@ -4,7 +4,6 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { accountsRepository } from "@/db/repositories/accounts-repository";
-import { settingsRepository } from "@/db/repositories/settings-repository";
 import { FieldShell } from "@/components/forms/field-shell";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -23,7 +22,7 @@ interface BalanceFormValues {
 
 export function OnboardingBalancesPage() {
   const navigate = useNavigate();
-  const userId = useAuthStore((state) => state.user?.id ?? null);
+  const userId = useAuthStore((state) => state.user?.uid ?? null);
   const accounts = useLiveQuery(() => accountsRepository.listActive(), []);
   const form = useForm<BalanceFormValues>({
     defaultValues: {
@@ -43,7 +42,7 @@ export function OnboardingBalancesPage() {
     const mappedRows = accounts.map((account) => ({
       id: account.id,
       name: account.name,
-      balance: account.initialBalance.toString(),
+      balance: account.openingBalance.toString(),
       isDefault: account.isDefault
     }));
 
@@ -72,8 +71,7 @@ export function OnboardingBalancesPage() {
       await accountsRepository.createAccount({
         name: row.name,
         type: "other",
-        initialBalance: Number(row.balance || 0),
-        currencyCode: (await settingsRepository.getSettings()).currencyCode,
+        openingBalance: Number(row.balance || 0),
         userId
       });
     }

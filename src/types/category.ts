@@ -5,7 +5,5 @@ export interface Category extends SyncableEntity {
   type: TransactionType;
   iconKey?: string | null;
   colorKey?: string | null;
-  isSystem: boolean;
-  isActive: boolean;
+  isDefault: boolean;
 }
-

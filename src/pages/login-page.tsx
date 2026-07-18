@@ -1,23 +1,22 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Smartphone, Sparkles } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
-import { Link, useNavigate } from "react-router-dom";
-import { toast } from "sonner";
+import { Link } from "react-router-dom";
 import { FieldShell } from "@/components/forms/field-shell";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { AuthLayout } from "@/features/auth/auth-layout";
-import { COMING_SOON_MESSAGE } from "@/lib/constants";
 import { ROUTES } from "@/routes/route-constants";
 import { loginSchema, type LoginFormValues } from "@/features/auth/schemas";
 import { useAuthStore } from "@/store/auth-store";
 
 export function LoginPage() {
-  const navigate = useNavigate();
   const authAvailable = useAuthStore((state) => state.authAvailable);
   const signIn = useAuthStore((state) => state.signIn);
+  const signInWithGoogle = useAuthStore((state) => state.signInWithGoogle);
+  const resetPassword = useAuthStore((state) => state.resetPassword);
   const error = useAuthStore((state) => state.error);
   const notice = useAuthStore((state) => state.notice);
   const clearMessages = useAuthStore((state) => state.clearMessages);
@@ -44,17 +43,44 @@ export function LoginPage() {
     }
   }
 
+  async function handleGoogle() {
+    try {
+      await signInWithGoogle();
+    } catch (submitError) {
+      form.setError("root", {
+        message: submitError instanceof Error ? submitError.message : "Google sign-in failed."
+      });
+    }
+  }
+
+  async function handleForgotPassword() {
+    const email = form.getValues("email");
+    if (!email) {
+      form.setError("email", { message: "Enter your email first to reset your password." });
+      return;
+    }
+
+    try {
+      await resetPassword(email);
+    } catch (submitError) {
+      form.setError("root", {
+        message: submitError instanceof Error ? submitError.message : "Unable to send reset email."
+      });
+    }
+  }
+
   return (
     <AuthLayout
       eyebrow="Welcome back"
       title="Log in"
       description="Use your email and password to restore your session, sync your local ledger, and continue where you left off."
     >
+      {/* eslint-disable-next-line @typescript-eslint/no-misused-promises */}
       <form className="grid gap-5" onSubmit={form.handleSubmit(onSubmit)}>
         {!authAvailable ? (
           <Card className="border-dashed border-accent/30 bg-accent/5">
             <CardContent className="p-4 text-sm leading-6 text-muted-foreground">
-              Authentication is unavailable until a valid Supabase project URL and publishable key are configured.
+              Authentication is unavailable until valid Firebase configuration is provided.
             </CardContent>
           </Card>
         ) : null}
@@ -97,29 +123,25 @@ export function LoginPage() {
           />
         </FieldShell>
 
+        <div className="flex justify-end">
+          <button
+            type="button"
+            className="text-sm font-semibold text-primary"
+            onClick={() => void handleForgotPassword()}
+            disabled={!authAvailable}
+          >
+            Forgot password?
+          </button>
+        </div>
+
         <Button type="submit" isLoading={form.formState.isSubmitting} disabled={!authAvailable}>
           Log in
         </Button>
 
-        <div className="grid gap-3">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => toast.message("Google sign-in", { description: COMING_SOON_MESSAGE })}
-          >
-            <Sparkles className="size-4" />
-            Continue with Google
-          </Button>
-
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => navigate(ROUTES.phoneAuth)}
-          >
-            <Smartphone className="size-4" />
-            Continue with phone
-          </Button>
-        </div>
+        <Button type="button" variant="outline" disabled={!authAvailable} onClick={() => void handleGoogle()}>
+          <Sparkles className="size-4" />
+          Continue with Google
+        </Button>
 
         <p className="text-sm text-muted-foreground">
           New here?{" "}
@@ -131,4 +153,3 @@ export function LoginPage() {
     </AuthLayout>
   );
 }
-

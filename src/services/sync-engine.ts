@@ -1,17 +1,21 @@
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable @typescript-eslint/no-base-to-string */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
+import {
+  collection,
+  doc,
+  getDocs,
+  orderBy,
+  query,
+  setDoc,
+  where
+} from "firebase/firestore";
 import { appDb, getOptionalTable } from "@/db/dexie";
 import { syncRepository } from "@/db/repositories/sync-repository";
-import { supabase } from "@/lib/supabase-client";
+import { firestore } from "@/lib/firebase-client";
 import type {
   Account,
   AppSettings,
   Category,
   NotificationPreference,
+  SyncableEntity,
   SyncEntityName,
   SyncOperationRecord,
   TransferRecord,
@@ -19,14 +23,24 @@ import type {
 } from "@/types";
 import { nowIso } from "@/utils/date-utils";
 
-const CHECKPOINT_PREFIX = "finance-ledger-checkpoint";
+// Checkpoint prefix is bumped from the old Supabase engine ("finance-ledger-*") so
+// the one-time backend switch starts each entity's pull cursor fresh.
+const CHECKPOINT_PREFIX = "monilog-firestore-checkpoint";
 
-function assertSupabase() {
-  if (!supabase) {
-    throw new Error("Supabase is not configured.");
+type SyncableRecord =
+  | Account
+  | Category
+  | TransactionRecord
+  | TransferRecord
+  | AppSettings
+  | NotificationPreference;
+
+function assertFirestore() {
+  if (!firestore) {
+    throw new Error("Firestore is not configured.");
   }
 
-  return supabase;
+  return firestore;
 }
 
 function getCheckpointKey(entityName: SyncEntityName) {
@@ -78,235 +92,44 @@ function getSyncTable(entityName: SyncEntityName) {
   return appDb.notificationPreferences;
 }
 
-function getRemoteTableName(entityName: SyncEntityName) {
-  if (entityName === "notificationPreferences") {
-    return "notification_preferences";
-  }
-
-  return entityName;
+// Firestore is schemaless, so records are stored with the app's camelCase field
+// names directly — no snake_case mapping. Only the local-only sync bookkeeping is
+// stripped. This keeps the Firestore shape identical to what the WhatsApp chatbot
+// will write.
+function toRemoteDoc(record: SyncableRecord) {
+  const {
+    remoteId: _remoteId,
+    syncStatus: _syncStatus,
+    syncError: _syncError,
+    lastSyncedAt: _lastSyncedAt,
+    ...rest
+  } = record as SyncableRecord & Partial<SyncableEntity>;
+  void _remoteId;
+  void _syncStatus;
+  void _syncError;
+  void _lastSyncedAt;
+  return rest;
 }
 
-function toRemoteRow(
-  record:
-    | Account
-    | Category
-    | TransactionRecord
-    | TransferRecord
-    | AppSettings
-    | NotificationPreference
-) {
-  if ("initialBalance" in record) {
-    return {
-      id: record.id,
-      user_id: record.userId,
-      name: record.name,
-      type: record.type,
-      initial_balance: record.initialBalance,
-      currency_code: record.currencyCode,
-      is_default: record.isDefault,
-      is_archived: record.isArchived,
-      display_order: record.displayOrder,
-      created_at: record.createdAt,
-      updated_at: record.updatedAt,
-      deleted_at: record.deletedAt
-    };
-  }
-
-  if ("isSystem" in record) {
-    return {
-      id: record.id,
-      user_id: record.userId,
-      name: record.name,
-      type: record.type,
-      icon_key: record.iconKey,
-      color_key: record.colorKey,
-      is_system: record.isSystem,
-      is_active: record.isActive,
-      created_at: record.createdAt,
-      updated_at: record.updatedAt,
-      deleted_at: record.deletedAt
-    };
-  }
-
-  if ("transactionDate" in record) {
-    return {
-      id: record.id,
-      user_id: record.userId,
-      account_id: record.accountId,
-      category_id: record.categoryId,
-      type: record.type,
-      amount: record.amount,
-      note: record.note,
-      transaction_date: record.transactionDate,
-      reference: record.reference,
-      created_at: record.createdAt,
-      updated_at: record.updatedAt,
-      deleted_at: record.deletedAt
-    };
-  }
-
-  if ("transferDate" in record) {
-    return {
-      id: record.id,
-      user_id: record.userId,
-      from_account_id: record.fromAccountId,
-      to_account_id: record.toAccountId,
-      amount: record.amount,
-      fee: record.fee,
-      note: record.note,
-      transfer_date: record.transferDate,
-      created_at: record.createdAt,
-      updated_at: record.updatedAt,
-      deleted_at: record.deletedAt
-    };
-  }
-
-  if ("onboardingComplete" in record) {
-    return {
-      id: record.id,
-      user_id: record.userId,
-      currency_code: record.currencyCode,
-      theme_mode: record.themeMode,
-      onboarding_complete: record.onboardingComplete,
-      created_at: record.createdAt,
-      updated_at: record.updatedAt
-    };
-  }
-
-  return {
-    id: record.id,
-    user_id: record.userId,
-    enabled: record.enabled,
-    reminder_time: record.reminderTime,
-    timing_mode: record.timingMode,
-    created_at: record.createdAt,
-    updated_at: record.updatedAt
-  };
-}
-
-function fromRemoteRow(
-  entityName: SyncEntityName,
-  row: Record<string, unknown>
-): Account | Category | TransactionRecord | TransferRecord | AppSettings | NotificationPreference {
-  if (entityName === "accounts") {
-    return {
-      id: String(row.id),
-      remoteId: String(row.id),
-      userId: String(row.user_id),
-      name: String(row.name),
-      type: row.type as Account["type"],
-      initialBalance: Number(row.initial_balance),
-      currencyCode: String(row.currency_code),
-      isDefault: Boolean(row.is_default),
-      isArchived: Boolean(row.is_archived),
-      displayOrder: Number(row.display_order),
-      syncStatus: "synced",
-      syncError: null,
-      lastSyncedAt: nowIso(),
-      createdAt: String(row.created_at),
-      updatedAt: String(row.updated_at),
-      deletedAt: (row.deleted_at as string | null | undefined) ?? null
-    };
-  }
-
-  if (entityName === "categories") {
-    return {
-      id: String(row.id),
-      remoteId: String(row.id),
-      userId: String(row.user_id),
-      name: String(row.name),
-      type: row.type as Category["type"],
-      iconKey: (row.icon_key as string | null | undefined) ?? null,
-      colorKey: (row.color_key as string | null | undefined) ?? null,
-      isSystem: Boolean(row.is_system),
-      isActive: Boolean(row.is_active),
-      syncStatus: "synced",
-      syncError: null,
-      lastSyncedAt: nowIso(),
-      createdAt: String(row.created_at),
-      updatedAt: String(row.updated_at),
-      deletedAt: (row.deleted_at as string | null | undefined) ?? null
-    };
-  }
-
-  if (entityName === "transactions") {
-    return {
-      id: String(row.id),
-      remoteId: String(row.id),
-      userId: String(row.user_id),
-      accountId: String(row.account_id),
-      categoryId: String(row.category_id),
-      type: row.type as TransactionRecord["type"],
-      amount: Number(row.amount),
-      note: String(row.note ?? ""),
-      transactionDate: String(row.transaction_date),
-      reference: (row.reference as string | null | undefined) ?? null,
-      syncStatus: "synced",
-      syncError: null,
-      lastSyncedAt: nowIso(),
-      createdAt: String(row.created_at),
-      updatedAt: String(row.updated_at),
-      deletedAt: (row.deleted_at as string | null | undefined) ?? null
-    };
-  }
-
-  if (entityName === "transfers") {
-    return {
-      id: String(row.id),
-      remoteId: String(row.id),
-      userId: String(row.user_id),
-      fromAccountId: String(row.from_account_id),
-      toAccountId: String(row.to_account_id),
-      amount: Number(row.amount),
-      fee: Number(row.fee ?? 0),
-      note: String(row.note ?? ""),
-      transferDate: String(row.transfer_date),
-      syncStatus: "synced",
-      syncError: null,
-      lastSyncedAt: nowIso(),
-      createdAt: String(row.created_at),
-      updatedAt: String(row.updated_at),
-      deletedAt: (row.deleted_at as string | null | undefined) ?? null
-    };
-  }
-
-  if (entityName === "settings") {
-    return {
-      id: String(row.id),
-      remoteId: String(row.id),
-      userId: String(row.user_id),
-      currencyCode: String(row.currency_code),
-      themeMode: row.theme_mode as AppSettings["themeMode"],
-      onboardingComplete: Boolean(row.onboarding_complete),
-      syncStatus: "synced",
-      syncError: null,
-      lastSyncedAt: nowIso(),
-      createdAt: String(row.created_at),
-      updatedAt: String(row.updated_at)
-    };
-  }
-
-  return {
-    id: String(row.id),
-    remoteId: String(row.id),
-    userId: String(row.user_id),
-    enabled: Boolean(row.enabled),
-    reminderTime: (row.reminder_time as string | null | undefined) ?? null,
-    timingMode: "daily",
-    syncStatus: "synced",
+function fromRemoteDoc(entityName: SyncEntityName, data: Record<string, unknown>): SyncableRecord {
+  const base = {
+    ...data,
+    remoteId: String(data.id),
+    syncStatus: "synced" as const,
     syncError: null,
-    lastSyncedAt: nowIso(),
-    createdAt: String(row.created_at),
-    updatedAt: String(row.updated_at)
+    lastSyncedAt: nowIso()
   };
+
+  // settings + notificationPreferences never carry deletedAt.
+  if (entityName === "settings" || entityName === "notificationPreferences") {
+    delete (base as Record<string, unknown>).deletedAt;
+  }
+
+  return base as unknown as SyncableRecord;
 }
 
-async function markLocalSynced(
-  entityName: SyncEntityName,
-  entityId: string,
-  maybeRemoteId?: string
-) {
-  const table = getSyncTable(entityName) as any;
+async function markLocalSynced(entityName: SyncEntityName, entityId: string, remoteId: string) {
+  const table = getSyncTable(entityName) as { get: (id: string) => Promise<SyncableRecord | undefined>; put: (record: SyncableRecord) => Promise<unknown> };
   const record = await table.get(entityId);
   if (!record) {
     return;
@@ -314,7 +137,7 @@ async function markLocalSynced(
 
   await table.put({
     ...record,
-    remoteId: maybeRemoteId ?? record.remoteId ?? entityId,
+    remoteId,
     syncStatus: "synced",
     syncError: null,
     lastSyncedAt: nowIso()
@@ -322,7 +145,7 @@ async function markLocalSynced(
 }
 
 async function markLocalFailed(entityName: SyncEntityName, entityId: string, errorMessage: string) {
-  const table = getSyncTable(entityName) as any;
+  const table = getSyncTable(entityName) as { get: (id: string) => Promise<SyncableRecord | undefined>; put: (record: SyncableRecord) => Promise<unknown> };
   const record = await table.get(entityId);
   if (!record) {
     return;
@@ -335,10 +158,10 @@ async function markLocalFailed(entityName: SyncEntityName, entityId: string, err
   });
 }
 
-async function pushOperation(operation: SyncOperationRecord) {
-  const client = assertSupabase();
+async function pushOperation(operation: SyncOperationRecord, userId: string) {
+  const db = assertFirestore();
   const table = getSyncTable(operation.entityName);
-  const record = await table.get(operation.entityId);
+  const record = (await table.get(operation.entityId)) as SyncableRecord | undefined;
 
   if (!record) {
     await syncRepository.remove(operation.id);
@@ -351,62 +174,55 @@ async function pushOperation(operation: SyncOperationRecord) {
 
   await syncRepository.markProcessing(operation.id);
 
-  const remoteRow = toRemoteRow(record);
-  const { error } = await client
-    .from(getRemoteTableName(operation.entityName))
-    .upsert(remoteRow, { onConflict: "user_id,id" });
-
-  if (error) {
-    await markLocalFailed(operation.entityName, operation.entityId, error.message);
-    await syncRepository.markFailed(operation.id, error.message);
-    throw new Error(error.message);
+  try {
+    const ref = doc(db, "users", userId, operation.entityName, record.id);
+    await setDoc(ref, toRemoteDoc(record), { merge: true });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Sync failed.";
+    await markLocalFailed(operation.entityName, operation.entityId, message);
+    await syncRepository.markFailed(operation.id, message);
+    throw new Error(message);
   }
 
-  await markLocalSynced(operation.entityName, operation.entityId, String(remoteRow.id));
+  await markLocalSynced(operation.entityName, operation.entityId, record.id);
   await syncRepository.remove(operation.id);
 }
 
 async function pullTable(entityName: SyncEntityName, userId: string) {
-  const client = assertSupabase();
+  const db = assertFirestore();
   const checkpoint = getCheckpoint(entityName);
-  let query = client
-    .from(getRemoteTableName(entityName))
-    .select("*")
-    .eq("user_id", userId)
-    .order("updated_at", { ascending: true });
+  const collectionRef = collection(db, "users", userId, entityName);
+  const constraints = checkpoint
+    ? [where("updatedAt", ">", checkpoint), orderBy("updatedAt", "asc")]
+    : [orderBy("updatedAt", "asc")];
 
-  if (checkpoint) {
-    query = query.gt("updated_at", checkpoint);
-  }
-
-  const { data, error } = await query;
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  const rows = data ?? [];
+  const snapshot = await getDocs(query(collectionRef, ...constraints));
   const table = getSyncTable(entityName);
 
-  for (const row of rows) {
-    const remoteRecord = fromRemoteRow(entityName, row);
-    const localRecord = await table.get(remoteRecord.id);
+  let latestUpdatedAt: string | null = null;
+
+  for (const document of snapshot.docs) {
+    const data = document.data() as Record<string, unknown>;
+    const remoteRecord = fromRemoteDoc(entityName, data);
+    const localRecord = (await table.get(remoteRecord.id)) as SyncableRecord | undefined;
 
     if (!localRecord || remoteRecord.updatedAt >= localRecord.updatedAt) {
       await table.put(remoteRecord as never);
     }
+
+    if (typeof data.updatedAt === "string") {
+      latestUpdatedAt = data.updatedAt;
+    }
   }
 
-  const latest = rows.at(-1) as Record<string, unknown> | undefined;
-  if (latest?.updated_at) {
-    // eslint-disable-next-line @typescript-eslint/no-base-to-string
-    setCheckpoint(entityName, String(latest.updated_at));
+  if (latestUpdatedAt) {
+    setCheckpoint(entityName, latestUpdatedAt);
   }
 }
 
 export const syncEngine = {
   async run(userId: string) {
-    if (!navigator.onLine || !supabase) {
+    if (!navigator.onLine || !firestore) {
       return syncRepository.summarize();
     }
 
@@ -414,7 +230,7 @@ export const syncEngine = {
 
     for (const operation of pendingOperations) {
       try {
-        await pushOperation(operation);
+        await pushOperation(operation, userId);
       } catch {
         // The local failure state has already been recorded, so the loop can continue.
       }

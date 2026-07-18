@@ -4,8 +4,11 @@ export interface TransferRecord extends SyncableEntity {
   fromAccountId: string;
   toAccountId: string;
   amount: number;
+  /** Total fee, kept as a convenience mirror of sourceFee + destinationFee. */
   fee: number;
-  note: string;
+  sourceFee: number;
+  destinationFee: number;
+  description: string;
   transferDate: string;
 }
 

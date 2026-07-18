@@ -10,6 +10,7 @@ import { FieldShell } from "@/components/forms/field-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { transactionSchema, type TransactionFormValues } from "@/features/transactions/transaction-schema";
 import { toDateInputValue } from "@/utils/date-utils";
@@ -38,7 +39,8 @@ export function TransactionForm({
       type: initialValue?.type ?? "expense",
       categoryId: initialValue?.categoryId ?? "",
       accountId: initialValue?.accountId ?? "",
-      note: initialValue?.note ?? "",
+      description: initialValue?.description ?? "",
+      affectsAccountBalance: initialValue?.affectsAccountBalance ?? true,
       transactionDate: initialValue?.transactionDate ?? toDateInputValue()
     }
   });
@@ -70,14 +72,12 @@ export function TransactionForm({
       if (initialValue) {
         await transactionsRepository.updateTransaction(initialValue.id, {
           ...values,
-          note: values.note,
           userId
         });
         toast.success("Transaction updated.");
       } else {
         await transactionsRepository.createTransaction({
           ...values,
-          note: values.note,
           userId
         });
         toast.success("Transaction saved locally.");
@@ -86,7 +86,8 @@ export function TransactionForm({
           type: values.type,
           categoryId: values.categoryId,
           accountId: values.accountId,
-          note: "",
+          description: "",
+          affectsAccountBalance: values.affectsAccountBalance,
           transactionDate: toDateInputValue()
         });
       }
@@ -175,14 +176,27 @@ export function TransactionForm({
         />
       </FieldShell>
 
-      <FieldShell label="Note" htmlFor="note" error={form.formState.errors.note?.message}>
+      <FieldShell label="Note" htmlFor="description" error={form.formState.errors.description?.message}>
         <Textarea
-          id="note"
+          id="description"
           placeholder="Add a short note if it helps later."
-          hasError={Boolean(form.formState.errors.note)}
-          {...form.register("note")}
+          hasError={Boolean(form.formState.errors.description)}
+          {...form.register("description")}
         />
       </FieldShell>
+
+      <div className="flex items-center justify-between rounded-xl border border-border/70 bg-muted/30 px-4 py-3">
+        <div>
+          <p className="text-sm font-medium text-foreground">Affects account balance</p>
+          <p className="text-xs text-muted-foreground">
+            Turn off to record a transaction without moving the account balance.
+          </p>
+        </div>
+        <Switch
+          checked={form.watch("affectsAccountBalance")}
+          onCheckedChange={(checked) => form.setValue("affectsAccountBalance", checked)}
+        />
+      </div>
 
       <Button type="submit" isLoading={form.formState.isSubmitting}>
         {submitLabel}

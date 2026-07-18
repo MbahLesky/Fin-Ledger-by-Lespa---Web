@@ -1,22 +1,33 @@
+import { ArrowRightLeft } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageShell } from "@/components/layout/page-shell";
 import { TransactionForm } from "@/features/transactions/transaction-form";
+import { ROUTES } from "@/routes/route-constants";
 import { useAuthStore } from "@/store/auth-store";
 
 export function AddTransactionPage() {
-  const userId = useAuthStore((state) => state.user?.id ?? null);
+  const navigate = useNavigate();
+  const userId = useAuthStore((state) => state.user?.uid ?? null);
 
   return (
     <PageShell
       title="Add transaction"
       description="Capture income or expense records quickly with the same local-first path that powers dashboard totals and analytics."
+      action={
+        <Button variant="outline" onClick={() => navigate(ROUTES.transfer)}>
+          <ArrowRightLeft className="size-4" />
+          Transfer money instead
+        </Button>
+      }
     >
       <div className="grid gap-5 lg:grid-cols-[1fr,0.9fr]">
         <Card>
           <CardHeader>
             <CardTitle>Manual entry</CardTitle>
             <CardDescription>
-              Amount, type, category, account, note, and date are validated before Fin Tracker saves locally.
+              Amount, type, category, account, note, and date are validated before Monilog saves locally.
             </CardDescription>
           </CardHeader>
           <CardContent>

@@ -9,39 +9,48 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { accountsRepository } from "@/db/repositories/accounts-repository";
+import { settingsRepository } from "@/db/repositories/settings-repository";
 import { transfersRepository } from "@/db/repositories/transfers-repository";
 import { transferSchema, type TransferFormValues } from "@/features/transfers/transfer-schema";
+import { DEFAULT_CURRENCY } from "@/lib/constants";
+import type { TransferRecord } from "@/types";
 import { toDateInputValue } from "@/utils/date-utils";
 import { formatCurrency } from "@/utils/formatting";
 
 interface TransferFormProps {
+  initialValue?: TransferRecord;
   userId?: string | null;
+  submitLabel?: string;
   onSubmitted?: () => void;
 }
 
-export function TransferForm({ userId, onSubmitted }: TransferFormProps) {
+export function TransferForm({ initialValue, userId, submitLabel = "Save transfer", onSubmitted }: TransferFormProps) {
   const accounts = useLiveQuery(() => accountsRepository.listWithBalances(), []);
+  const settings = useLiveQuery(() => settingsRepository.getSettings(), []);
+  const currencyCode = settings?.currencyCode ?? DEFAULT_CURRENCY;
 
   const form = useForm<TransferFormValues>({
     resolver: zodResolver(transferSchema),
     mode: "onChange",
     defaultValues: {
-      fromAccountId: "",
-      toAccountId: "",
-      amount: 0,
-      fee: 0,
-      transferDate: toDateInputValue(),
-      note: ""
+      fromAccountId: initialValue?.fromAccountId ?? "",
+      toAccountId: initialValue?.toAccountId ?? "",
+      amount: initialValue?.amount ?? 0,
+      sourceFee: initialValue?.sourceFee ?? 0,
+      destinationFee: initialValue?.destinationFee ?? 0,
+      transferDate: initialValue?.transferDate ?? toDateInputValue(),
+      description: initialValue?.description ?? ""
     }
   });
 
   const fromAccountId = form.watch("fromAccountId");
   const toAccountId = form.watch("toAccountId");
   const amount = Number(form.watch("amount") ?? 0);
-  const fee = Number(form.watch("fee") ?? 0);
+  const sourceFee = Number(form.watch("sourceFee") ?? 0);
+  const destinationFee = Number(form.watch("destinationFee") ?? 0);
 
   useEffect(() => {
-    if (!accounts?.length) {
+    if (!accounts?.length || initialValue) {
       return;
     }
 
@@ -58,43 +67,50 @@ export function TransferForm({ userId, onSubmitted }: TransferFormProps) {
         form.setValue("toAccountId", fallbackDestination.id, { shouldValidate: true });
       }
     }
-  }, [accounts, form]);
+  }, [accounts, form, initialValue]);
 
   const fromAccount = useMemo(
     () => (accounts ?? []).find((account) => account.id === fromAccountId),
     [accounts, fromAccountId]
   );
 
-  const selectedCurrencyCode = fromAccount?.currencyCode ?? "USD";
-  const sourceBalance = fromAccount?.currentBalance ?? 0;
-  const totalDebit = amount + fee;
+  // When editing, the existing transfer's debit is still reflected in currentBalance,
+  // so add it back to evaluate available balance as if this transfer didn't exist.
+  const editingAddback =
+    initialValue && initialValue.fromAccountId === fromAccountId
+      ? initialValue.amount + initialValue.sourceFee
+      : 0;
+  const sourceBalance = (fromAccount?.currentBalance ?? 0) + editingAddback;
+  const totalDebit = amount + sourceFee;
   const insufficientBalance = totalDebit > sourceBalance;
   const amountError =
     form.formState.errors.amount?.message ??
-    (insufficientBalance ? "Insufficient source balance for amount plus fee." : undefined);
+    (insufficientBalance ? "Insufficient source balance for amount plus source fee." : undefined);
 
   async function onSubmit(values: TransferFormValues) {
     if (insufficientBalance) {
       form.setError("amount", {
-        message: "Insufficient source balance for amount plus fee."
+        message: "Insufficient source balance for amount plus source fee."
       });
       return;
     }
 
     try {
-      await transfersRepository.createTransfer({
-        ...values,
-        userId
-      });
-
-      toast.success("Transfer saved locally.");
-      form.reset({
-        ...values,
-        amount: 0,
-        fee: 0,
-        note: "",
-        transferDate: toDateInputValue()
-      });
+      if (initialValue) {
+        await transfersRepository.updateTransfer(initialValue.id, { ...values, userId });
+        toast.success("Transfer updated.");
+      } else {
+        await transfersRepository.createTransfer({ ...values, userId });
+        toast.success("Transfer saved locally.");
+        form.reset({
+          ...values,
+          amount: 0,
+          sourceFee: 0,
+          destinationFee: 0,
+          description: "",
+          transferDate: toDateInputValue()
+        });
+      }
       onSubmitted?.();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Unable to save this transfer.");
@@ -102,12 +118,13 @@ export function TransferForm({ userId, onSubmitted }: TransferFormProps) {
   }
 
   return (
+    // eslint-disable-next-line @typescript-eslint/no-misused-promises
     <form className="grid gap-5" onSubmit={form.handleSubmit(onSubmit)}>
       <div className="grid gap-5 md:grid-cols-2">
         <FieldShell
           label="From account"
           htmlFor="fromAccountId"
-          hint={fromAccount ? `Available ${formatCurrency(sourceBalance, selectedCurrencyCode)}` : undefined}
+          hint={fromAccount ? `Available ${formatCurrency(sourceBalance, currencyCode)}` : undefined}
           error={form.formState.errors.fromAccountId?.message}
         >
           <Select
@@ -126,7 +143,7 @@ export function TransferForm({ userId, onSubmitted }: TransferFormProps) {
             <SelectContent>
               {(accounts ?? []).map((account) => (
                 <SelectItem key={account.id} value={account.id}>
-                  {account.name} ({formatCurrency(account.currentBalance, account.currencyCode)})
+                  {account.name} ({formatCurrency(account.currentBalance, currencyCode)})
                 </SelectItem>
               ))}
             </SelectContent>
@@ -154,7 +171,7 @@ export function TransferForm({ userId, onSubmitted }: TransferFormProps) {
         </FieldShell>
       </div>
 
-      <div className="grid gap-5 md:grid-cols-2">
+      <div className="grid gap-5 md:grid-cols-3">
         <FieldShell label="Amount" htmlFor="amount" error={amountError}>
           <Input
             id="amount"
@@ -166,14 +183,29 @@ export function TransferForm({ userId, onSubmitted }: TransferFormProps) {
           />
         </FieldShell>
 
-        <FieldShell label="Fee (optional)" htmlFor="fee" error={form.formState.errors.fee?.message}>
+        <FieldShell label="Source fee" htmlFor="sourceFee" error={form.formState.errors.sourceFee?.message}>
           <Input
-            id="fee"
+            id="sourceFee"
             type="number"
             step="0.01"
             min="0"
-            hasError={Boolean(form.formState.errors.fee)}
-            {...form.register("fee")}
+            hasError={Boolean(form.formState.errors.sourceFee)}
+            {...form.register("sourceFee")}
+          />
+        </FieldShell>
+
+        <FieldShell
+          label="Destination fee"
+          htmlFor="destinationFee"
+          error={form.formState.errors.destinationFee?.message}
+        >
+          <Input
+            id="destinationFee"
+            type="number"
+            step="0.01"
+            min="0"
+            hasError={Boolean(form.formState.errors.destinationFee)}
+            {...form.register("destinationFee")}
           />
         </FieldShell>
       </div>
@@ -188,20 +220,24 @@ export function TransferForm({ userId, onSubmitted }: TransferFormProps) {
           />
         </FieldShell>
 
-        <FieldShell label="Summary" htmlFor="summary">
+        <FieldShell label="Transfer impact" htmlFor="summary">
           <div className="rounded-xl border border-border/70 bg-muted/30 px-4 py-2.5 text-sm text-muted-foreground">
-            Total debit from source:{" "}
-            <span className="font-semibold text-foreground">{formatCurrency(totalDebit, selectedCurrencyCode)}</span>
+            Source debit{" "}
+            <span className="font-semibold text-foreground">{formatCurrency(totalDebit, currencyCode)}</span> ·
+            Destination credit{" "}
+            <span className="font-semibold text-foreground">
+              {formatCurrency(Math.max(amount - destinationFee, 0), currencyCode)}
+            </span>
           </div>
         </FieldShell>
       </div>
 
-      <FieldShell label="Note" htmlFor="note" error={form.formState.errors.note?.message}>
+      <FieldShell label="Note" htmlFor="description" error={form.formState.errors.description?.message}>
         <Textarea
-          id="note"
+          id="description"
           placeholder="Optional context for this transfer."
-          hasError={Boolean(form.formState.errors.note)}
-          {...form.register("note")}
+          hasError={Boolean(form.formState.errors.description)}
+          {...form.register("description")}
         />
       </FieldShell>
 
@@ -210,7 +246,7 @@ export function TransferForm({ userId, onSubmitted }: TransferFormProps) {
         isLoading={form.formState.isSubmitting}
         disabled={!form.formState.isValid || insufficientBalance || (accounts?.length ?? 0) < 2}
       >
-        Save transfer
+        {submitLabel}
       </Button>
     </form>
   );

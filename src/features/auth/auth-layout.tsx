@@ -23,7 +23,7 @@ export function AuthLayout({ eyebrow, title, description, children }: AuthLayout
                 Make sense of every balance shift without losing your calm.
               </h1>
               <p className="text-base leading-7 text-muted-foreground">
-                Fin Tracker is designed for clear capture, reliable local storage, and a
+                Monilog is designed for clear capture, reliable local storage, and a
                 polished money workflow that keeps working when your connection drops.
               </p>
             </div>

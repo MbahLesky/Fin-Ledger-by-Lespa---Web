@@ -1,0 +1,12 @@
+rules_version = '2';
+
+// Monilog Web (project monilog-28535). Every user's ledger lives under
+// users/{uid}/... and is readable/writable only by that authenticated user.
+// The WhatsApp chatbot (a future Cloud Function) will write with the same uid.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{userId}/{document=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+  }
+}

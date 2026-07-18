@@ -11,15 +11,12 @@ import { OnboardingBalancesPage } from "@/pages/onboarding-balances-page";
 import { OnboardingCurrencyPage } from "@/pages/onboarding-currency-page";
 import { OnboardingImportPage } from "@/pages/onboarding-import-page";
 import { OnboardingReminderPage } from "@/pages/onboarding-reminder-page";
-import { PhoneAuthPage } from "@/pages/phone-auth-page";
-import { ProfileCompletionPage } from "@/pages/profile-completion-page";
 import { RegisterPage } from "@/pages/register-page";
 import { SettingsPage } from "@/pages/settings-page";
 import { TransferPage } from "@/pages/transfer-page";
 import { TransactionsPage } from "@/pages/transactions-page";
 import { AuthRoute } from "@/routes/auth-route";
 import { OnboardingRoute } from "@/routes/onboarding-route";
-import { ProfileRoute } from "@/routes/profile-route";
 import { ProtectedRoute } from "@/routes/protected-route";
 import { RootRedirect } from "@/routes/root-redirect";
 import { ROUTES } from "@/routes/route-constants";
@@ -39,19 +36,6 @@ const router = createBrowserRouter([
       {
         path: ROUTES.register,
         element: <RegisterPage />
-      },
-      {
-        path: ROUTES.phoneAuth,
-        element: <PhoneAuthPage />
-      }
-    ]
-  },
-  {
-    element: <ProfileRoute />,
-    children: [
-      {
-        path: ROUTES.profileCompletion,
-        element: <ProfileCompletionPage />
       }
     ]
   },

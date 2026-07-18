@@ -2,12 +2,12 @@ import type { LedgerEntryType, SyncableEntity, TransactionType } from "@/types/c
 
 export interface TransactionRecord extends SyncableEntity {
   accountId: string;
-  categoryId: string;
+  categoryId: string | null;
   type: TransactionType;
   amount: number;
-  note: string;
+  description: string;
+  affectsAccountBalance: boolean;
   transactionDate: string;
-  reference?: string | null;
 }
 
 export interface TransactionFilters {
@@ -25,4 +25,5 @@ export interface TransactionListItem extends TransactionRecord {
   accountCurrencyCode: string;
   categoryName: string;
   categoryColorKey?: string | null;
+  categoryIconKey?: string | null;
 }

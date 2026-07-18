@@ -1,4 +1,11 @@
-import { DEFAULT_ACCOUNTS, DEFAULT_CATEGORY_SEEDS, DEFAULT_CURRENCY, NOTIFICATION_PREFERENCES_ID, SETTINGS_ROW_ID } from "@/lib/constants";
+import {
+  DEFAULT_ACCOUNTS,
+  DEFAULT_CATEGORY_SEEDS,
+  DEFAULT_CURRENCY,
+  DEFAULT_LANGUAGE,
+  NOTIFICATION_PREFERENCES_ID,
+  SETTINGS_ROW_ID
+} from "@/lib/constants";
 import type { Account, AppSettings, Category, NotificationPreference } from "@/types";
 import { nowIso } from "@/utils/date-utils";
 
@@ -8,8 +15,10 @@ export function createDefaultSettings(): AppSettings {
   return {
     id: SETTINGS_ROW_ID,
     currencyCode: DEFAULT_CURRENCY,
+    language: DEFAULT_LANGUAGE,
     themeMode: "system",
     onboardingComplete: false,
+    tutorialCompletedIds: [],
     userId: null,
     remoteId: null,
     syncStatus: "pending",
@@ -38,17 +47,15 @@ export function createDefaultNotificationPreferences(): NotificationPreference {
   };
 }
 
-export function createDefaultAccounts(currencyCode = DEFAULT_CURRENCY): Account[] {
+export function createDefaultAccounts(): Account[] {
   const timestamp = nowIso();
 
   return DEFAULT_ACCOUNTS.map((account) => ({
     id: account.id,
     name: account.name,
     type: account.type,
-    initialBalance: 0,
-    currencyCode,
+    openingBalance: 0,
     isDefault: true,
-    isArchived: false,
     displayOrder: account.displayOrder,
     userId: null,
     remoteId: null,
@@ -70,8 +77,7 @@ export function createDefaultCategories(): Category[] {
     type: category.type,
     iconKey: category.iconKey,
     colorKey: category.colorKey,
-    isSystem: true,
-    isActive: true,
+    isDefault: true,
     userId: null,
     remoteId: null,
     syncStatus: "pending",
@@ -82,4 +88,3 @@ export function createDefaultCategories(): Category[] {
     deletedAt: null
   }));
 }
-

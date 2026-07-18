@@ -1,23 +1,21 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Smartphone, Sparkles } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
-import { Link, useNavigate } from "react-router-dom";
-import { toast } from "sonner";
+import { Link } from "react-router-dom";
 import { FieldShell } from "@/components/forms/field-shell";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { AuthLayout } from "@/features/auth/auth-layout";
 import { registerSchema, type RegisterFormValues } from "@/features/auth/schemas";
-import { COMING_SOON_MESSAGE } from "@/lib/constants";
 import { ROUTES } from "@/routes/route-constants";
 import { useAuthStore } from "@/store/auth-store";
 
 export function RegisterPage() {
-  const navigate = useNavigate();
   const authAvailable = useAuthStore((state) => state.authAvailable);
   const signUp = useAuthStore((state) => state.signUp);
+  const signInWithGoogle = useAuthStore((state) => state.signInWithGoogle);
   const error = useAuthStore((state) => state.error);
   const notice = useAuthStore((state) => state.notice);
   const clearMessages = useAuthStore((state) => state.clearMessages);
@@ -46,17 +44,28 @@ export function RegisterPage() {
     }
   }
 
+  async function handleGoogle() {
+    try {
+      await signInWithGoogle();
+    } catch (submitError) {
+      form.setError("root", {
+        message: submitError instanceof Error ? submitError.message : "Google sign-in failed."
+      });
+    }
+  }
+
   return (
     <AuthLayout
       eyebrow="Create your account"
       title="Register"
       description="Start with a real authenticated identity, then move through currency, balances, reminders, and your ledger setup."
     >
+      {/* eslint-disable-next-line @typescript-eslint/no-misused-promises */}
       <form className="grid gap-5" onSubmit={form.handleSubmit(onSubmit)}>
         {!authAvailable ? (
           <Card className="border-dashed border-accent/30 bg-accent/5">
             <CardContent className="p-4 text-sm leading-6 text-muted-foreground">
-              Authentication is unavailable until a valid Supabase project URL and publishable key are configured.
+              Authentication is unavailable until valid Firebase configuration is provided.
             </CardContent>
           </Card>
         ) : null}
@@ -127,25 +136,10 @@ export function RegisterPage() {
           Register
         </Button>
 
-        <div className="grid gap-3">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => toast.message("Google sign-up", { description: COMING_SOON_MESSAGE })}
-          >
-            <Sparkles className="size-4" />
-            Continue with Google
-          </Button>
-
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => navigate(ROUTES.phoneAuth)}
-          >
-            <Smartphone className="size-4" />
-            Continue with phone
-          </Button>
-        </div>
+        <Button type="button" variant="outline" disabled={!authAvailable} onClick={() => void handleGoogle()}>
+          <Sparkles className="size-4" />
+          Continue with Google
+        </Button>
 
         <p className="text-sm text-muted-foreground">
           Already have an account?{" "}
@@ -157,4 +151,3 @@ export function RegisterPage() {
     </AuthLayout>
   );
 }
-

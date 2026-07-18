@@ -1,6 +1,5 @@
 import { appDb, getOptionalTable } from "@/db/dexie";
 import { createDefaultAccounts } from "@/db/seed/default-records";
-import { settingsRepository } from "@/db/repositories/settings-repository";
 import type { Account, AccountBalanceSnapshot, AccountType, TransactionRecord, TransferRecord } from "@/types";
 import { nowIso } from "@/utils/date-utils";
 import { createId } from "@/utils/id";
@@ -9,8 +8,7 @@ import { syncRepository } from "@/db/repositories/sync-repository";
 async function ensureDefaultAccounts() {
   const count = await appDb.accounts.count();
   if (count === 0) {
-    const settings = await settingsRepository.getSettings();
-    await appDb.accounts.bulkPut(createDefaultAccounts(settings.currencyCode));
+    await appDb.accounts.bulkPut(createDefaultAccounts());
   }
 }
 
@@ -19,7 +17,9 @@ function calculateBalanceForAccount(
   transactions: TransactionRecord[],
   transfers: TransferRecord[]
 ) {
-  const accountTransactions = transactions.filter((item) => item.accountId === account.id && !item.deletedAt);
+  const accountTransactions = transactions.filter(
+    (item) => item.accountId === account.id && !item.deletedAt && item.affectsAccountBalance
+  );
   const outgoingTransfers = transfers.filter((item) => item.fromAccountId === account.id && !item.deletedAt);
   const incomingTransfers = transfers.filter((item) => item.toAccountId === account.id && !item.deletedAt);
 
@@ -29,12 +29,19 @@ function calculateBalanceForAccount(
   const expenseTotal = accountTransactions
     .filter((item) => item.type === "expense")
     .reduce((sum, item) => sum + item.amount, 0);
-  const outgoingTransferTotal = outgoingTransfers.reduce((sum, item) => sum + item.amount + item.fee, 0);
-  const incomingTransferTotal = incomingTransfers.reduce((sum, item) => sum + item.amount, 0);
+  // Source account is debited amount + sourceFee; destination is credited amount - destinationFee.
+  const outgoingTransferTotal = outgoingTransfers.reduce(
+    (sum, item) => sum + item.amount + item.sourceFee,
+    0
+  );
+  const incomingTransferTotal = incomingTransfers.reduce(
+    (sum, item) => sum + item.amount - item.destinationFee,
+    0
+  );
 
   return {
     currentBalance:
-      account.initialBalance +
+      account.openingBalance +
       incomeTotal -
       expenseTotal -
       outgoingTransferTotal +
@@ -47,9 +54,7 @@ function calculateBalanceForAccount(
 export const accountsRepository = {
   async listActive() {
     await ensureDefaultAccounts();
-    return appDb.accounts
-      .filter((account) => !account.deletedAt && !account.isArchived)
-      .sortBy("displayOrder");
+    return appDb.accounts.filter((account) => !account.deletedAt).sortBy("displayOrder");
   },
 
   async listWithBalances(): Promise<AccountBalanceSnapshot[]> {
@@ -74,8 +79,7 @@ export const accountsRepository = {
   async createAccount(input: {
     name: string;
     type: AccountType;
-    initialBalance: number;
-    currencyCode: string;
+    openingBalance: number;
     userId?: string | null;
   }) {
     const existingAccounts = await this.listActive();
@@ -84,10 +88,8 @@ export const accountsRepository = {
       id: createId("account"),
       name: input.name.trim(),
       type: input.type,
-      initialBalance: input.initialBalance,
-      currencyCode: input.currencyCode,
+      openingBalance: input.openingBalance,
       isDefault: false,
-      isArchived: false,
       displayOrder: existingAccounts.length,
       userId: input.userId ?? null,
       remoteId: null,
@@ -104,7 +106,10 @@ export const accountsRepository = {
     return account;
   },
 
-  async updateAccount(id: string, updates: Partial<Pick<Account, "name" | "type" | "initialBalance" | "currencyCode" | "isArchived" | "displayOrder" | "userId">>) {
+  async updateAccount(
+    id: string,
+    updates: Partial<Pick<Account, "name" | "type" | "openingBalance" | "displayOrder" | "userId">>
+  ) {
     const current = await appDb.accounts.get(id);
     if (!current) {
       throw new Error("Account not found.");
@@ -127,23 +132,7 @@ export const accountsRepository = {
     await Promise.all(
       rows.map((row) =>
         this.updateAccount(row.id, {
-          initialBalance: row.balance
-        })
-      )
-    );
-  },
-
-  async syncDefaultAccountCurrency(currencyCode: string) {
-    await ensureDefaultAccounts();
-
-    const defaultAccounts = await appDb.accounts
-      .filter((account) => account.isDefault && !account.deletedAt && account.currencyCode !== currencyCode)
-      .toArray();
-
-    await Promise.all(
-      defaultAccounts.map((account) =>
-        this.updateAccount(account.id, {
-          currencyCode
+          openingBalance: row.balance
         })
       )
     );
@@ -157,7 +146,6 @@ export const accountsRepository = {
 
     const next: Account = {
       ...account,
-      isArchived: true,
       deletedAt: nowIso(),
       syncStatus: "pending",
       syncError: null,

@@ -13,23 +13,26 @@ import { accountsRepository } from "@/db/repositories/accounts-repository";
 import { categoriesRepository } from "@/db/repositories/categories-repository";
 import { settingsRepository } from "@/db/repositories/settings-repository";
 import { workspaceRepository } from "@/db/repositories/workspace-repository";
+import { jsonBackupService } from "@/services/json-backup-service";
 import { SUPPORTED_CURRENCIES } from "@/lib/constants";
 import { ROUTES } from "@/routes/route-constants";
 import { useAuthStore } from "@/store/auth-store";
 import { useUiStore } from "@/store/ui-store";
-import type { AccountType, TransactionType } from "@/types";
+import type { AccountType, AppLanguage, TransactionType } from "@/types";
+import { useRef } from "react";
 
 export function SettingsPage() {
   const navigate = useNavigate();
   const profile = useAuthStore((state) => state.profile);
-  const saveProfile = useAuthStore((state) => state.saveProfile);
   const signOut = useAuthStore((state) => state.signOut);
-  const userId = useAuthStore((state) => state.user?.id ?? null);
+  const userId = useAuthStore((state) => state.user?.uid ?? null);
   const settings = useLiveQuery(() => settingsRepository.getSettings(), []);
   const reminderPreferences = useLiveQuery(() => settingsRepository.getNotificationPreferences(), []);
   const accounts = useLiveQuery(() => accountsRepository.listActive(), []);
   const categories = useLiveQuery(() => categoriesRepository.listActive(), []);
   const setThemeMode = useUiStore((state) => state.setThemeMode);
+  const startTour = useUiStore((state) => state.startTour);
+  const restoreInputRef = useRef<HTMLInputElement>(null);
 
   const [accountBalances, setAccountBalances] = useState<Record<string, string>>({});
   const [newAccountName, setNewAccountName] = useState("");
@@ -43,16 +46,12 @@ export function SettingsPage() {
     }
 
     setAccountBalances(
-      Object.fromEntries(accounts.map((account) => [account.id, account.initialBalance.toString()]))
+      Object.fromEntries(accounts.map((account) => [account.id, account.openingBalance.toString()]))
     );
   }, [accounts]);
 
   async function handleCurrencyChange(currencyCode: string) {
     await settingsRepository.setCurrency(currencyCode);
-    await accountsRepository.syncDefaultAccountCurrency(currencyCode);
-    await saveProfile({
-      preferredCurrency: currencyCode
-    });
     toast.success("Currency updated.");
   }
 
@@ -60,6 +59,36 @@ export function SettingsPage() {
     await settingsRepository.setThemeMode(themeMode);
     setThemeMode(themeMode);
     toast.success("Theme preference saved.");
+  }
+
+  async function handleLanguageChange(language: AppLanguage) {
+    await settingsRepository.setLanguage(language);
+    toast.success("Language updated.");
+  }
+
+  async function handleCreateBackup() {
+    try {
+      await jsonBackupService.createBackup(profile?.name ?? "");
+      toast.success("Backup downloaded.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to create the backup.");
+    }
+  }
+
+  async function handleRestoreBackup(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) {
+      return;
+    }
+
+    try {
+      const content = await file.text();
+      await jsonBackupService.restoreBackup(content, userId);
+      toast.success("Backup restored.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to restore the backup.");
+    }
   }
 
   async function handleSaveBalances() {
@@ -81,8 +110,7 @@ export function SettingsPage() {
     await accountsRepository.createAccount({
       name: newAccountName,
       type: newAccountType,
-      initialBalance: 0,
-      currencyCode: settings?.currencyCode ?? "USD",
+      openingBalance: 0,
       userId
     });
 
@@ -110,10 +138,6 @@ export function SettingsPage() {
 
   async function handleReset() {
     await workspaceRepository.resetAppData();
-    await saveProfile({
-      onboardingCompleted: false,
-      preferredCurrency: null
-    });
     toast.success("App data reset. Onboarding is starting over.");
     navigate(ROUTES.onboardingCurrency);
   }
@@ -133,7 +157,7 @@ export function SettingsPage() {
           <CardHeader>
             <CardTitle>Profile and session</CardTitle>
             <CardDescription>
-              The app-level profile is separate from Supabase Auth system tables.
+              Your name and email come from your Monilog account.
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4">
@@ -159,7 +183,7 @@ export function SettingsPage() {
           <CardContent className="grid gap-5">
             <div className="grid gap-2">
               <label className="text-sm font-semibold">Currency</label>
-              <Select value={settings?.currencyCode ?? "USD"} onValueChange={(value) => void handleCurrencyChange(value)}>
+              <Select value={settings?.currencyCode ?? "XAF"} onValueChange={(value) => void handleCurrencyChange(value)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -169,6 +193,21 @@ export function SettingsPage() {
                       {currency.label}
                     </SelectItem>
                   ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <label className="text-sm font-semibold">Language</label>
+              <Select
+                value={settings?.language ?? "en"}
+                onValueChange={(value) => void handleLanguageChange(value as AppLanguage)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="en">English</SelectItem>
+                  <SelectItem value="fr">Français</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -238,6 +277,44 @@ export function SettingsPage() {
             </Button>
             <Button variant="outline" onClick={() => navigate(ROUTES.exportData)}>
               Export data
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-5 xl:grid-cols-[1fr,1fr]">
+        <Card>
+          <CardHeader>
+            <CardTitle>Backup and restore</CardTitle>
+            <CardDescription>
+              Export a JSON backup of your whole ledger, or restore one. Backups are interchangeable with the Monilog app.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-3">
+            <Button variant="outline" onClick={() => void handleCreateBackup()}>
+              Create backup
+            </Button>
+            <Button variant="outline" onClick={() => restoreInputRef.current?.click()}>
+              Restore backup
+            </Button>
+            <input
+              ref={restoreInputRef}
+              type="file"
+              accept="application/json,.json"
+              className="hidden"
+              onChange={(event) => void handleRestoreBackup(event)}
+            />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Guided tour</CardTitle>
+            <CardDescription>Replay the walkthrough of Monilog's main features any time.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button variant="outline" onClick={() => startTour()}>
+              Replay app tour
             </Button>
           </CardContent>
         </Card>
@@ -326,7 +403,7 @@ export function SettingsPage() {
                   <p className="font-semibold">{category.name}</p>
                   <p className="text-xs capitalize text-muted-foreground">{category.type}</p>
                 </div>
-                {!category.isSystem ? (
+                {!category.isDefault ? (
                   <Button variant="ghost" onClick={() => void categoriesRepository.softDelete(category.id)}>
                     Remove
                   </Button>

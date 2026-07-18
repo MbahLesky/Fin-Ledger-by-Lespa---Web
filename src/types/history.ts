@@ -6,10 +6,11 @@ export interface LedgerHistoryItem {
   entryType: LedgerEntryType;
   amount: number;
   fee: number;
-  note: string;
+  description: string;
   occurredAt: string;
   accountLabel: string;
   categoryLabel: string | null;
+  categoryIconKey?: string | null;
   accountId: string | null;
   fromAccountId?: string;
   toAccountId?: string;

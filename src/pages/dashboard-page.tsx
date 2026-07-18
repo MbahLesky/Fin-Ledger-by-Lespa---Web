@@ -30,8 +30,8 @@ export function DashboardPage() {
   const settings = useLiveQuery(() => settingsRepository.getSettings(), []);
   const syncState = useSyncStatus();
   const isOnline = useNetworkStatus();
-  const userId = useAuthStore((state) => state.user?.id);
-  const selectedCurrencyCode = settings?.currencyCode ?? "USD";
+  const userId = useAuthStore((state) => state.user?.uid);
+  const selectedCurrencyCode = settings?.currencyCode ?? "XAF";
 
   const hasTransactions = (dashboard?.recentTransactions.length ?? 0) > 0;
 
@@ -125,9 +125,9 @@ export function DashboardPage() {
                   <p className="text-xs text-muted-foreground capitalize">{account.type.replace("_", " ")}</p>
                 </div>
                 <div className="text-right">
-                  <p className="font-semibold">{formatCurrency(account.currentBalance, account.currencyCode)}</p>
+                  <p className="font-semibold">{formatCurrency(account.currentBalance, selectedCurrencyCode)}</p>
                   <p className="text-xs text-muted-foreground">
-                    Opening {formatCurrency(account.initialBalance, account.currencyCode)}
+                    Opening {formatCurrency(account.openingBalance, selectedCurrencyCode)}
                   </p>
                 </div>
               </div>
@@ -150,7 +150,7 @@ export function DashboardPage() {
                 <div>
                   <p className="font-semibold">{transaction.categoryName}</p>
                   <p className="text-sm text-muted-foreground">
-                    {transaction.accountName} • {transaction.note || "No note"}
+                    {transaction.accountName} • {transaction.description || "No note"}
                   </p>
                 </div>
                 <div className="text-right">

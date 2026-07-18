@@ -1,7 +1,7 @@
 import { appDb } from "@/db/dexie";
 import { createDefaultNotificationPreferences, createDefaultSettings } from "@/db/seed/default-records";
 import { SETTINGS_ROW_ID } from "@/lib/constants";
-import type { AppSettings, NotificationPreference, ThemeMode } from "@/types";
+import type { AppLanguage, AppSettings, NotificationPreference, ThemeMode } from "@/types";
 import { nowIso } from "@/utils/date-utils";
 import { syncRepository } from "@/db/repositories/sync-repository";
 
@@ -28,7 +28,14 @@ export const settingsRepository = {
     return settings ?? createDefaultSettings();
   },
 
-  async updateSettings(updates: Partial<Pick<AppSettings, "currencyCode" | "themeMode" | "onboardingComplete" | "userId">>) {
+  async updateSettings(
+    updates: Partial<
+      Pick<
+        AppSettings,
+        "currencyCode" | "language" | "themeMode" | "onboardingComplete" | "tutorialCompletedIds" | "userId"
+      >
+    >
+  ) {
     const current = await this.getSettings();
 
     const next: AppSettings = {
@@ -52,8 +59,27 @@ export const settingsRepository = {
     return this.updateSettings({ currencyCode });
   },
 
+  async setLanguage(language: AppLanguage) {
+    return this.updateSettings({ language });
+  },
+
   async setOnboardingComplete(onboardingComplete: boolean) {
     return this.updateSettings({ onboardingComplete });
+  },
+
+  async markTutorialComplete(tutorialId: string) {
+    const current = await this.getSettings();
+    if (current.tutorialCompletedIds.includes(tutorialId)) {
+      return current;
+    }
+
+    return this.updateSettings({
+      tutorialCompletedIds: [...current.tutorialCompletedIds, tutorialId]
+    });
+  },
+
+  async resetTutorials() {
+    return this.updateSettings({ tutorialCompletedIds: [] });
   },
 
   async getNotificationPreferences(): Promise<NotificationPreference> {

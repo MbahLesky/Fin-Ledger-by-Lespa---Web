@@ -1,33 +1,37 @@
 import { ArrowRightLeft, Download, LayoutDashboard, LineChart, Plus, ReceiptText, Settings2 } from "lucide-react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { BrandLogo } from "@/components/navigation/brand-logo";
 import { Button } from "@/components/ui/button";
+import { AppTour } from "@/features/tutorials/app-tour";
 import { cn } from "@/lib/utils";
 import { ROUTES } from "@/routes/route-constants";
 
+// Mirrors the Flutter app's bottom navigation: Dashboard · History · Add (center)
+// · Analytics · Settings. Transfers are reached from the Add screen and the sidebar.
 const navigationItems = [
   {
-    label: "Dashboard",
+    tKey: "nav.dashboard",
     icon: LayoutDashboard,
     to: ROUTES.dashboard
   },
   {
-    label: "Transactions",
+    tKey: "nav.transactions",
     icon: ReceiptText,
     to: ROUTES.transactions
   },
   {
-    label: "Transfer",
-    icon: ArrowRightLeft,
-    to: ROUTES.transfer
+    tKey: "nav.add",
+    icon: Plus,
+    to: ROUTES.addTransaction
   },
   {
-    label: "Analytics",
+    tKey: "nav.analytics",
     icon: LineChart,
     to: ROUTES.analytics
   },
   {
-    label: "Settings",
+    tKey: "nav.settings",
     icon: Settings2,
     to: ROUTES.settings
   }
@@ -36,9 +40,11 @@ const navigationItems = [
 export function AppShell() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { t } = useTranslation();
 
   return (
     <div className="min-h-screen pb-24 lg:pb-0">
+      <AppTour />
       <div className="mx-auto flex min-h-screen max-w-[1600px]">
         <aside className="hidden w-80 shrink-0 border-r border-border/70 bg-card/75 px-6 py-6 backdrop-blur lg:flex lg:flex-col">
           <BrandLogo />
@@ -64,7 +70,7 @@ export function AppShell() {
                 }
               >
                 <item.icon className="size-4" />
-                {item.label}
+                {t(item.tKey)}
               </NavLink>
             ))}
           </nav>
@@ -75,15 +81,23 @@ export function AppShell() {
               onClick={() => navigate(ROUTES.addTransaction, { state: { backgroundLocation: location } })}
             >
               <Plus className="size-4" />
-              Add transaction
+              {t("nav.addTransaction")}
             </Button>
             <Button
               variant="outline"
               className="w-full"
+              onClick={() => navigate(ROUTES.transfer)}
+            >
+              <ArrowRightLeft className="size-4" />
+              {t("nav.transferMoney")}
+            </Button>
+            <Button
+              variant="ghost"
+              className="w-full"
               onClick={() => navigate(ROUTES.exportData)}
             >
               <Download className="size-4" />
-              Export data
+              {t("nav.exportData")}
             </Button>
           </div>
         </aside>
@@ -97,13 +111,13 @@ export function AppShell() {
                   variant="outline"
                   onClick={() => navigate(ROUTES.importData)}
                 >
-                  Import
+                  {t("nav.import")}
                 </Button>
                 <Button
                   onClick={() => navigate(ROUTES.addTransaction, { state: { backgroundLocation: location } })}
                 >
                   <Plus className="size-4" />
-                  Add transaction
+                  {t("nav.addTransaction")}
                 </Button>
               </div>
             </div>
@@ -129,7 +143,7 @@ export function AppShell() {
               }
             >
               <item.icon className="size-4" />
-              {item.label}
+              {t(item.tKey)}
             </NavLink>
           ))}
         </div>

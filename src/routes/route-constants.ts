@@ -2,8 +2,6 @@ export const ROUTES = {
   root: "/",
   login: "/login",
   register: "/register",
-  phoneAuth: "/auth/phone",
-  profileCompletion: "/profile",
   onboardingCurrency: "/onboarding/currency",
   onboardingImport: "/onboarding/import",
   onboardingBalances: "/onboarding/balances",
