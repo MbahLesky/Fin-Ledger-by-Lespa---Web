@@ -1,10 +1,10 @@
 # Coding Standards
 
-*Project: Finance Ledger Web*
+*Project: Monilog Web*
 
 ## Purpose
 
-This document defines the coding standards for the Finance Ledger web application across frontend code, local persistence, sync logic, Supabase integration, and shared utilities.
+This document defines the coding standards for the Monilog web application across frontend code, local persistence, sync logic, Supabase integration, and shared utilities.
 
 ## Core Principles
 
@@ -136,4 +136,4 @@ Poor uses:
 
 ## Summary
 
-The coding standard for Finance Ledger Web is simple: keep the React code clean, keep persistence boundaries explicit, keep sync logic disciplined, and make the offline-first behavior easy for future contributors to understand and extend.
+The coding standard for Monilog Web is simple: keep the React code clean, keep persistence boundaries explicit, keep sync logic disciplined, and make the offline-first behavior easy for future contributors to understand and extend.

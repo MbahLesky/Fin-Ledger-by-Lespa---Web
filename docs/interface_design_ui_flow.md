@@ -1,10 +1,10 @@
 # Interface Design and UI Flow
 
-*Finance Ledger Web*
+*Monilog Web*
 
 ## Purpose
 
-This document defines the page structure, responsive behavior, and primary user flows for the Finance Ledger web application.
+This document defines the page structure, responsive behavior, and primary user flows for the Monilog web application.
 
 ## Design Principles
 
@@ -330,4 +330,4 @@ MVP flow:
 
 ## Summary
 
-The interface flow still starts with authentication, profile completion, and onboarding, then moves into the same ledger, analytics, settings, and portability flows already defined for Finance Ledger. The difference is that those experiences are now delivered as responsive web pages and PWA views across screen sizes.
+The interface flow still starts with authentication, profile completion, and onboarding, then moves into the same ledger, analytics, settings, and portability flows already defined for Monilog. The difference is that those experiences are now delivered as responsive web pages and PWA views across screen sizes.

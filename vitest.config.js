@@ -1,3 +1,12 @@
+var __spreadArray = (this && this.__spreadArray) || function (to, from, pack) {
+    if (pack || arguments.length === 2) for (var i = 0, l = from.length, ar; i < l; i++) {
+        if (ar || !(i in from)) {
+            if (!ar) ar = Array.prototype.slice.call(from, 0, i);
+            ar[i] = from[i];
+        }
+    }
+    return to.concat(ar || Array.prototype.slice.call(from));
+};
 import { configDefaults, defineConfig } from "vitest/config";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -12,6 +21,6 @@ export default defineConfig({
         globals: true,
         environment: "jsdom",
         setupFiles: "./tests/setup.ts",
-        exclude: [...configDefaults.exclude, "node_modules.corrupt.*/**"]
+        exclude: __spreadArray(__spreadArray([], configDefaults.exclude, true), ["node_modules.corrupt.*/**"], false)
     }
 });

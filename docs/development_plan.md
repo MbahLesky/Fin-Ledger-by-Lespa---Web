@@ -1,10 +1,10 @@
 # Development Plan
 
-*Finance Ledger - Web Application Delivery Plan*
+*Monilog - Web Application Delivery Plan*
 
 ## Introduction
 
-Finance Ledger is still being delivered in layers so the product stays useful while the implementation direction shifts from the earlier mobile-first plan to an offline-first web application.
+Monilog is still being delivered in layers so the product stays useful while the implementation direction shifts from the earlier mobile-first plan to an offline-first web application.
 
 The product scope does not change:
 
@@ -236,4 +236,4 @@ Success indicators:
 
 ## Summary
 
-The web delivery plan preserves the original Finance Ledger product while changing the build path to a browser-first, installable, offline-capable application. The next implementation focus is the local web shell and IndexedDB foundation, followed by authenticated sync and PWA hardening.
+The web delivery plan preserves the original Monilog product while changing the build path to a browser-first, installable, offline-capable application. The next implementation focus is the local web shell and IndexedDB foundation, followed by authenticated sync and PWA hardening.

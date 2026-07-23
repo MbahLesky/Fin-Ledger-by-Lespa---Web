@@ -1,14 +1,14 @@
 # Dexie and Supabase Sync Strategy
 
-*Finance Ledger - Offline-First Web Sync Strategy*
+*Monilog - Offline-First Web Sync Strategy*
 
 ## Purpose
 
-This document explains how Finance Ledger uses Dexie, IndexedDB, and Supabase together in the web version of the product.
+This document explains how Monilog uses Dexie, IndexedDB, and Supabase together in the web version of the product.
 
 ## Core Strategy
 
-Finance Ledger keeps the ledger local-first.
+Monilog keeps the ledger local-first.
 
 The browser runtime works like this:
 
@@ -111,4 +111,4 @@ This policy is intentionally simple for MVP and can evolve later into richer con
 
 ## Summary
 
-Finance Ledger now uses Supabase for identity and remote continuity, Dexie for local-first finance data, and a dedicated sync engine to bridge the two. The result is a web application that preserves the product's offline-first behavior instead of turning every finance action into an online-only operation.
+Monilog now uses Supabase for identity and remote continuity, Dexie for local-first finance data, and a dedicated sync engine to bridge the two. The result is a web application that preserves the product's offline-first behavior instead of turning every finance action into an online-only operation.

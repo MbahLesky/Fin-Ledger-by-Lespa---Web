@@ -1,10 +1,10 @@
 # Brand and Visual Language
 
-*Finance Ledger*
+*Monilog*
 
 ## Purpose
 
-This document defines the current brand, color, typography, theme, and product-writing direction for Finance Ledger so future UI work stays visually and verbally consistent.
+This document defines the current brand, color, typography, theme, and product-writing direction for Monilog so future UI work stays visually and verbally consistent.
 
 It complements the structural screen guidance in `interface_design_ui_flow.md` by focusing on how the product should look and sound.
 
@@ -12,13 +12,13 @@ It complements the structural screen guidance in `interface_design_ui_flow.md` b
 
 ### Product Name
 
-- use `Finance Ledger` as the full product name in headings, auth copy, and external documentation
+- use `Monilog` as the full product name in headings, auth copy, and external documentation
 - use `ledger` only when space is tight and the meaning is already clear from context
 - avoid switching between multiple public names for the product
 
 ### Core Promise
 
-Finance Ledger should feel like the fastest calm place to record money movement and understand what changed.
+Monilog should feel like the fastest calm place to record money movement and understand what changed.
 
 ### Tagline
 
@@ -26,7 +26,7 @@ Finance Ledger should feel like the fastest calm place to record money movement 
 
 ### Brand Personality
 
-Finance Ledger should feel:
+Monilog should feel:
 
 - calm
 - trustworthy
@@ -35,7 +35,7 @@ Finance Ledger should feel:
 - encouraging
 - lightweight
 
-Finance Ledger should not feel:
+Monilog should not feel:
 
 - preachy
 - overly corporate
@@ -45,7 +45,7 @@ Finance Ledger should not feel:
 
 ## Positioning
 
-Finance Ledger is a simple personal finance tracker, not a full accounting platform. The experience should communicate:
+Monilog is a simple personal finance tracker, not a full accounting platform. The experience should communicate:
 
 - quick capture over complex setup
 - useful clarity over dense reporting
@@ -246,4 +246,4 @@ Avoid stock imagery that makes the product feel like a bank, a crypto app, or a 
 
 ## Summary
 
-Finance Ledger's brand direction is calm, trustworthy, and lightweight. Visually it relies on deep blue structure, teal support, coral emphasis, soft surfaces, and rounded components. Verbally it should always sound clear, helpful, and low-pressure.
+Monilog's brand direction is calm, trustworthy, and lightweight. Visually it relies on deep blue structure, teal support, coral emphasis, soft surfaces, and rounded components. Verbally it should always sound clear, helpful, and low-pressure.

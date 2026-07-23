@@ -1,14 +1,14 @@
 # System Architecture
 
-*Finance Ledger - Offline-First Web Architecture*
+*Monilog - Offline-First Web Architecture*
 
 ## Purpose
 
-This document defines the target architecture for Finance Ledger as a web application while preserving the same finance-tracking product scope already established for the project.
+This document defines the target architecture for Monilog as a web application while preserving the same finance-tracking product scope already established for the project.
 
 ## Architectural Reality
 
-Finance Ledger is now documented as an **offline-capable web application** with a local-first data pipeline.
+Monilog is now documented as an **offline-capable web application** with a local-first data pipeline.
 
 The web stack uses:
 
@@ -24,7 +24,7 @@ The web stack uses:
 
 ## Core Runtime Principle
 
-Finance Ledger uses **local write first, cloud sync second** behavior.
+Monilog uses **local write first, cloud sync second** behavior.
 
 Core finance actions should follow this path:
 
@@ -134,7 +134,7 @@ These records are readable and writable offline in IndexedDB and are the runtime
 ### Remote Identity and Profile Data
 
 - `auth.users` managed by Supabase Auth
-- `public.profiles` managed by Finance Ledger application logic
+- `public.profiles` managed by Monilog application logic
 
 ### Remote Ledger Continuity Data
 
@@ -189,7 +189,7 @@ MVP conflict policy:
 
 The reminder feature remains part of the product, but browser platforms vary in background notification support.
 
-Finance Ledger therefore documents reminders as:
+Monilog therefore documents reminders as:
 
 - persisted reminder preferences in Dexie and Supabase
 - browser notification permissions where supported
@@ -225,4 +225,4 @@ Planned later:
 
 ## Summary
 
-Finance Ledger is now documented as a React-based, offline-capable web application. The architecture centers the browser as the primary client, IndexedDB as the immediate source of truth, and Supabase as the authenticated cloud backend that receives synchronized changes after local writes succeed.
+Monilog is now documented as a React-based, offline-capable web application. The architecture centers the browser as the primary client, IndexedDB as the immediate source of truth, and Supabase as the authenticated cloud backend that receives synchronized changes after local writes succeed.

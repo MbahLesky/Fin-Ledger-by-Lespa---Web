@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 import { APP_NAME } from "@/lib/constants";
-import finTrackLogo from "@/assets/logo/fin_track_logo.png";
+import monilogLogo from "@/assets/logo/monilog-icon.png";
 
 interface BrandLogoProps {
   compact?: boolean;
@@ -11,7 +11,7 @@ export function BrandLogo({ compact = false, className }: BrandLogoProps) {
   return (
     <div className={cn("flex items-center gap-3", className)}>
       <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-2xl border border-border/60 bg-card shadow-card">
-        <img src={finTrackLogo} alt={`${APP_NAME} logo`} className="h-full w-full object-contain p-1" />
+        <img src={monilogLogo} alt={`${APP_NAME} logo`} className="h-full w-full object-contain p-1" />
       </div>
       {!compact ? (
         <div>

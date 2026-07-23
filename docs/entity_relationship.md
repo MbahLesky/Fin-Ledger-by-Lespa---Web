@@ -1,10 +1,10 @@
 # Entity Relationship Diagram (ERD)
 
-*Finance Ledger - Smart Financial Tracking & Analytics Tool*
+*Monilog - Smart Financial Tracking & Analytics Tool*
 
 ## Purpose
 
-This document describes the major data entities in Finance Ledger and the relationships between them for the web-based, offline-first product direction.
+This document describes the major data entities in Monilog and the relationships between them for the web-based, offline-first product direction.
 
 ## ER Diagram
 

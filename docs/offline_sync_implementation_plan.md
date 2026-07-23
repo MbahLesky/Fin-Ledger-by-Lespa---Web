@@ -1,10 +1,10 @@
 # Offline Sync Implementation Plan
 
-*Finance Ledger - Dexie to Supabase Sync Foundation*
+*Monilog - Dexie to Supabase Sync Foundation*
 
 ## Purpose
 
-This document defines how Finance Ledger introduces remote continuity in the web application without giving up local-first behavior.
+This document defines how Monilog introduces remote continuity in the web application without giving up local-first behavior.
 
 ## Why a Sync Foundation Is Needed
 
@@ -91,7 +91,7 @@ The local database should track:
 
 ## Required Supabase Setup
 
-- Auth enabled for Finance Ledger users
+- Auth enabled for Monilog users
 - `public.profiles` table with RLS
 - remote ledger tables with `user_id` ownership
 - RLS policies enforcing `user_id = auth.uid()`
@@ -106,4 +106,4 @@ The local database should track:
 
 ## Summary
 
-The sync plan keeps Finance Ledger faithful to its local-first behavior. Users save data into IndexedDB immediately, then the app syncs that state to Supabase when the browser session and network allow it.
+The sync plan keeps Monilog faithful to its local-first behavior. Users save data into IndexedDB immediately, then the app syncs that state to Supabase when the browser session and network allow it.

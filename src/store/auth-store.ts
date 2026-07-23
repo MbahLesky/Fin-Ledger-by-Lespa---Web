@@ -1,5 +1,7 @@
 import type { User } from "firebase/auth";
+import { toast } from "sonner";
 import { create } from "zustand";
+import { mapAuthError } from "@/features/auth/auth-errors";
 import { isFirebaseConfigured } from "@/lib/env";
 import { firebaseAuthService } from "@/services/firebase-auth-service";
 import { useSyncStore } from "@/store/sync-store";
@@ -21,6 +23,7 @@ interface AuthState {
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (fullName: string, email: string, password: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
+  signInWithGoogleCredential: (idToken: string) => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   signOut: () => Promise<void>;
   saveProfile: (updates: Partial<Profile>) => Promise<void>;
@@ -102,6 +105,16 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   signUp: async (fullName, email, password) => {
     set({ error: null, notice: null });
     const user = await firebaseAuthService.signUp({ fullName, email, password });
+
+    // Sent before hydrating, because hydration navigates straight into
+    // onboarding — the toast outlives the auth screen, the notice would not.
+    const verificationSent = await firebaseAuthService.sendVerificationEmail();
+    if (verificationSent) {
+      toast.success("Account created", {
+        description: `We sent a verification link to ${user.email ?? email}.`
+      });
+    }
+
     await get().hydrateFromUser(user);
   },
 
@@ -109,6 +122,18 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ error: null, notice: null });
     const user = await firebaseAuthService.signInWithGoogle();
     await get().hydrateFromUser(user);
+  },
+
+  // Google One Tap resolves outside any form, so failures surface through the
+  // store's own error slot rather than being thrown at a caller.
+  signInWithGoogleCredential: async (idToken) => {
+    set({ error: null, notice: null });
+    try {
+      const user = await firebaseAuthService.signInWithGoogleCredential(idToken);
+      await get().hydrateFromUser(user);
+    } catch (error) {
+      set({ error: mapAuthError(error) });
+    }
   },
 
   resetPassword: async (email) => {
@@ -121,6 +146,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     if (isFirebaseConfigured) {
       await firebaseAuthService.signOut();
     }
+
+    // Without this, One Tap's auto-select would silently sign the user back in
+    // the moment they land back on the login screen.
+    window.google?.accounts?.id?.disableAutoSelect();
 
     set({
       status: "signed_out",

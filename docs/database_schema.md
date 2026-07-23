@@ -1,10 +1,10 @@
 # Database Schema Specification
 
-*Finance Ledger - Local IndexedDB Schema and Supabase PostgreSQL Schema*
+*Monilog - Local IndexedDB Schema and Supabase PostgreSQL Schema*
 
 ## Purpose
 
-This document defines the data boundaries for Finance Ledger as an offline-first web application.
+This document defines the data boundaries for Monilog as an offline-first web application.
 
 Goals:
 
@@ -334,7 +334,7 @@ Rules:
 
 Purpose:
 
-- stores the Finance Ledger app-level user profile separately from Supabase Auth system tables
+- stores the Monilog app-level user profile separately from Supabase Auth system tables
 
 Key fields:
 

@@ -1,10 +1,11 @@
-const CACHE_NAME = "monilog-shell-v1";
+// Bumped whenever APP_SHELL changes, so the activate handler evicts the old cache.
+const CACHE_NAME = "monilog-shell-v2";
 const APP_SHELL = [
   "/",
   "/index.html",
   "/offline.html",
   "/manifest.webmanifest",
-  "/icons/fin_track_logo.png"
+  "/icons/monilog-white.png"
 ];
 
 self.addEventListener("install", (event) => {

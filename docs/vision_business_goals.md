@@ -1,12 +1,12 @@
 # Vision and Business Goals
 
-*Finance Ledger - Smart Financial Tracking & Analytics Tool*
+*Monilog - Smart Financial Tracking & Analytics Tool*
 
 ## Vision Statement
 
 Make financial tracking effortless by letting users record income and expenses through simple, fast interactions, including chat-based messaging.
 
-Finance Ledger aims to turn financial tracking into a natural habit by reducing friction and simplifying how people interact with their financial data.
+Monilog aims to turn financial tracking into a natural habit by reducing friction and simplifying how people interact with their financial data.
 
 ## Mission Statement
 
@@ -73,7 +73,7 @@ Provide a lightweight and intuitive platform that helps users log transactions e
 
 ## Competitive Advantage
 
-Finance Ledger stands out by combining quick transaction entry with conversational logging. Its main differentiators are:
+Monilog stands out by combining quick transaction entry with conversational logging. Its main differentiators are:
 
 - WhatsApp-friendly financial tracking
 - low-friction input
@@ -83,7 +83,7 @@ Finance Ledger stands out by combining quick transaction entry with conversation
 
 ## Product Positioning
 
-Finance Ledger is a simple financial tracking and analytics tool, not a full accounting system. It prioritizes:
+Monilog is a simple financial tracking and analytics tool, not a full accounting system. It prioritizes:
 
 - ease of use over complexity
 - speed over feature overload

@@ -1,14 +1,14 @@
 # Software Requirements Specification (SRS)
 
-*Finance Ledger - Smart Financial Tracking & Analytics Tool*
+*Monilog - Smart Financial Tracking & Analytics Tool*
 
 ## Purpose
 
-This document defines the functional and non-functional requirements for Finance Ledger.
+This document defines the functional and non-functional requirements for Monilog.
 
 ## Scope
 
-Finance Ledger enables users to:
+Monilog enables users to:
 
 - log income and expenses
 - record transactions through the web application and WhatsApp chatbot
@@ -165,4 +165,4 @@ The system requires storage for:
 
 ## Summary
 
-Finance Ledger should deliver a fast and understandable financial tracking experience centered on quick entry, clear insight, and a shared backend foundation. The current implementation direction achieves that through an offline-first web application.
+Monilog should deliver a fast and understandable financial tracking experience centered on quick entry, clear insight, and a shared backend foundation. The current implementation direction achieves that through an offline-first web application.

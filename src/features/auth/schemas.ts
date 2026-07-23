@@ -1,8 +1,11 @@
 import { z } from "zod";
 
+// Log-in only checks that a password was typed. The 8-character rule belongs to
+// registration — enforcing it here would lock out testers who registered on the
+// landing page while it still accepted 6.
 export const loginSchema = z.object({
   email: z.string().email("Enter a valid email address."),
-  password: z.string().min(8, "Password must be at least 8 characters.")
+  password: z.string().min(1, "Enter your password.")
 });
 
 export const registerSchema = z

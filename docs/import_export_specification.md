@@ -1,6 +1,6 @@
 # Import / Export Specification
 
-*Finance Ledger - CSV MVP*
+*Monilog - CSV MVP*
 
 ## Purpose
 

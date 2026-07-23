@@ -1,10 +1,10 @@
 # Component Diagram
 
-*Finance Ledger - Offline-First Web Component View*
+*Monilog - Offline-First Web Component View*
 
 ## Purpose
 
-This document describes the active components in the Finance Ledger web application and the future components the architecture reserves space for.
+This document describes the active components in the Monilog web application and the future components the architecture reserves space for.
 
 ## Current Component Groups
 
@@ -142,4 +142,4 @@ flowchart LR
 
 ## Summary
 
-The component architecture preserves the same Finance Ledger product flow while changing the client platform to the browser. React renders the experience, Dexie holds the local truth, the sync engine bridges to Supabase, and the PWA shell keeps the app usable when the network is unreliable.
+The component architecture preserves the same Monilog product flow while changing the client platform to the browser. React renders the experience, Dexie holds the local truth, the sync engine bridges to Supabase, and the PWA shell keeps the app usable when the network is unreliable.

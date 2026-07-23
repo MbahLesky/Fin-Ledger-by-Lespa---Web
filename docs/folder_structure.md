@@ -1,10 +1,10 @@
 # Folder Structure
 
-*Project: Finance Ledger Web*
+*Project: Monilog Web*
 
 ## Overview
 
-This document describes the recommended project structure for the Finance Ledger web application using React, TypeScript, Vite, Tailwind CSS, shadcn/ui, Supabase, Dexie, and PWA support.
+This document describes the recommended project structure for the Monilog web application using React, TypeScript, Vite, Tailwind CSS, shadcn/ui, Supabase, Dexie, and PWA support.
 
 The structure remains feature-first while centralizing cross-feature foundations such as routing, local persistence, sync, auth, and shared UI.
 

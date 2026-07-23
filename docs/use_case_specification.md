@@ -1,10 +1,10 @@
 # Use Case Specification
 
-*Finance Ledger - Smart Financial Tracking and Analytics Tool*
+*Monilog - Smart Financial Tracking and Analytics Tool*
 
 ## Purpose
 
-This document defines the major use cases currently supported or explicitly planned for Finance Ledger across the web application and later chatbot or backend channels.
+This document defines the major use cases currently supported or explicitly planned for Monilog across the web application and later chatbot or backend channels.
 
 ## Scope
 
@@ -47,19 +47,19 @@ The use cases cover:
 
 ### UC-01: Register Account
 
-- **Description:** The user creates a new Finance Ledger account through Supabase authentication.
+- **Description:** The user creates a new Monilog account through Supabase authentication.
 - **Preconditions:** The user does not already have an active authenticated session.
 - **Trigger:** The user selects the register option.
-- **Main flow:** Open registration page -> choose email/password -> submit -> system validates -> Supabase account is created -> Finance Ledger ensures the `profiles` row exists after the first successful authenticated session -> profile completion is shown if needed -> onboarding begins.
+- **Main flow:** Open registration page -> choose email/password -> submit -> system validates -> Supabase account is created -> Monilog ensures the `profiles` row exists after the first successful authenticated session -> profile completion is shown if needed -> onboarding begins.
 - **Alternative flows:** Invalid input returns validation errors; duplicate account returns an account-exists message; email confirmation may be required; selecting Google shows a coming-soon message; selecting phone opens the phone page but the submit action still returns coming-soon guidance.
 - **Postconditions:** A Supabase-authenticated account exists and the app can continue with profile completion or onboarding.
 
 ### UC-02: Log In
 
-- **Description:** The user signs in to access Finance Ledger data.
+- **Description:** The user signs in to access Monilog data.
 - **Preconditions:** A valid user account exists.
 - **Trigger:** The user submits email and password credentials.
-- **Main flow:** Open login page -> submit email/password -> system validates with Supabase -> authenticated session starts -> Finance Ledger loads or creates the `profiles` row -> system routes the user to profile completion, onboarding, or dashboard.
+- **Main flow:** Open login page -> submit email/password -> system validates with Supabase -> authenticated session starts -> Monilog loads or creates the `profiles` row -> system routes the user to profile completion, onboarding, or dashboard.
 - **Alternative flows:** Invalid credentials return an error message; missing Supabase setup returns a configuration message; selecting Google shows a coming-soon message; submitting the phone page returns coming-soon guidance without entering an incomplete OTP flow.
 - **Postconditions:** The user is authenticated and routed to the correct post-auth state.
 
@@ -189,4 +189,4 @@ The use cases cover:
 
 ## Summary
 
-The Finance Ledger use-case set begins with Supabase-backed identity, then moves into onboarding and daily finance management in the web application. Later chatbot and backend channels extend that same authenticated ownership model rather than redefining the product.
+The Monilog use-case set begins with Supabase-backed identity, then moves into onboarding and daily finance management in the web application. Later chatbot and backend channels extend that same authenticated ownership model rather than redefining the product.

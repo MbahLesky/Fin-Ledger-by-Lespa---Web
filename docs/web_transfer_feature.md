@@ -1,6 +1,6 @@
 # Web Transfer Feature Specification
 
-*Finance Ledger Web*
+*Monilog Web*
 
 ## Purpose
 

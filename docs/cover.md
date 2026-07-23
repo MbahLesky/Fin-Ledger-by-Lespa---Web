@@ -1,4 +1,4 @@
-# Finance Ledger
+# Monilog
 
 **Smart Financial Tracking & Management System**
 
@@ -17,14 +17,14 @@
 
 ## Project Overview
 
-Finance Ledger is a lightweight financial tracking and analytics tool designed to help users record, organize, and understand their income and expenses with minimal friction.
+Monilog is a lightweight financial tracking and analytics tool designed to help users record, organize, and understand their income and expenses with minimal friction.
 
 The product is built around two primary entry points:
 
 - a web application for structured interaction
 - a WhatsApp chatbot for fast conversational logging
 
-By making financial entry faster and more natural, Finance Ledger encourages users to build a consistent tracking habit and gives them clearer visibility into their financial behavior.
+By making financial entry faster and more natural, Monilog encourages users to build a consistent tracking habit and gives them clearer visibility into their financial behavior.
 
 ## Core Objectives
 
@@ -45,7 +45,7 @@ By making financial entry faster and more natural, Finance Ledger encourages use
 
 ## Confidentiality Notice
 
-This document contains proprietary and confidential information related to the Finance Ledger system. Unauthorized use, distribution, or reproduction of this document is prohibited.
+This document contains proprietary and confidential information related to the Monilog system. Unauthorized use, distribution, or reproduction of this document is prohibited.
 
 ## Approval
 

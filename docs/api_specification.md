@@ -1,10 +1,10 @@
 # API Specification
 
-*Finance Ledger - Web Client and Supabase Contract*
+*Monilog - Web Client and Supabase Contract*
 
 ## Purpose
 
-This document records the backend-facing contract for the Finance Ledger web application and the larger backend surface reserved for later phases.
+This document records the backend-facing contract for the Monilog web application and the larger backend surface reserved for later phases.
 
 ## Current Backend Scope
 
@@ -208,4 +208,4 @@ Important alignment rules:
 
 ## Summary
 
-Finance Ledger Web uses Supabase as its live backend contract for identity, profiles, and synced ledger continuity. The browser client remains local-first, but the authenticated Supabase layer provides the remote ownership and persistence boundary that the sync engine targets.
+Monilog Web uses Supabase as its live backend contract for identity, profiles, and synced ledger continuity. The browser client remains local-first, but the authenticated Supabase layer provides the remote ownership and persistence boundary that the sync engine targets.

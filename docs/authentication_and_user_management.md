@@ -1,14 +1,14 @@
 # Authentication and User Management
 
-*Finance Ledger - Supabase Auth for the Web Client*
+*Monilog - Supabase Auth for the Web Client*
 
 ## Purpose
 
-This document explains how Finance Ledger uses Supabase authentication and app-level profile records in the web version of the product.
+This document explains how Monilog uses Supabase authentication and app-level profile records in the web version of the product.
 
 ## Why Supabase Is Used
 
-Finance Ledger remains local-first for finance data, but it still needs:
+Monilog remains local-first for finance data, but it still needs:
 
 - secure identity
 - browser session restore
@@ -68,7 +68,7 @@ If OAuth is activated later, Supabase redirect URLs must include the production 
 
 1. User registers with email and password.
 2. Supabase authenticates the user when email confirmation rules allow it, or the user confirms email and signs in afterward.
-3. Finance Ledger upserts a row in `public.profiles` using the authenticated user id.
+3. Monilog upserts a row in `public.profiles` using the authenticated user id.
 4. If the profile is missing required fields, the app shows profile completion.
 5. The user continues into onboarding or the main app.
 
@@ -91,12 +91,12 @@ These are different layers and must stay separate.
 
 ### `public.profiles`
 
-- managed by Finance Ledger application logic
+- managed by Monilog application logic
 - stores app-facing profile fields
 - linked 1:1 to `auth.users.id`
 - used for name, email, phone number, onboarding metadata, and preferred currency
 
-Finance Ledger never stores passwords, OTP secrets, refresh tokens, or service-role credentials in `public.profiles`.
+Monilog never stores passwords, OTP secrets, refresh tokens, or service-role credentials in `public.profiles`.
 
 ## `profiles` Table Schema
 
@@ -198,4 +198,4 @@ Planned for later phases:
 
 ## Summary
 
-Supabase is the authentication and user-profile foundation for Finance Ledger Web. The ledger remains local-first in IndexedDB, but authenticated identity and ownership come from Supabase so the product can support session restore, remote continuity, and future multi-device use.
+Supabase is the authentication and user-profile foundation for Monilog Web. The ledger remains local-first in IndexedDB, but authenticated identity and ownership come from Supabase so the product can support session restore, remote continuity, and future multi-device use.

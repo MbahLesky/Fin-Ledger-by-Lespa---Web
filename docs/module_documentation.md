@@ -1,10 +1,10 @@
 # Module Documentation
 
-*Finance Ledger Web*
+*Monilog Web*
 
 ## Introduction
 
-This document defines the application modules for the web version of Finance Ledger. The business capabilities stay the same as the earlier product planning, but the implementation is now aligned to a browser-first, offline-first architecture.
+This document defines the application modules for the web version of Monilog. The business capabilities stay the same as the earlier product planning, but the implementation is now aligned to a browser-first, offline-first architecture.
 
 ## Core Principles
 
@@ -196,4 +196,4 @@ Responsibilities:
 
 ## Summary
 
-The module boundaries still reflect the same Finance Ledger product: auth, onboarding, accounts, categories, transactions, transfers, analytics, reminders, and CSV portability. What changes is the delivery model: React pages, Dexie local storage, a dedicated sync engine, and Supabase-backed authentication and continuity.
+The module boundaries still reflect the same Monilog product: auth, onboarding, accounts, categories, transactions, transfers, analytics, reminders, and CSV portability. What changes is the delivery model: React pages, Dexie local storage, a dedicated sync engine, and Supabase-backed authentication and continuity.

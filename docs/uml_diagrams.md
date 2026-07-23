@@ -1,10 +1,10 @@
 # UML Diagrams
 
-*Finance Ledger - Smart Financial Tracking & Analytics Tool*
+*Monilog - Smart Financial Tracking & Analytics Tool*
 
 ## Purpose
 
-This document collects the key UML and process diagrams used to describe Finance Ledger behavior, structure, and interaction patterns.
+This document collects the key UML and process diagrams used to describe Monilog behavior, structure, and interaction patterns.
 
 ## Diagram Coverage
 

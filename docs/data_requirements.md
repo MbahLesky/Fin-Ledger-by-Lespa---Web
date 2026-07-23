@@ -1,10 +1,10 @@
 # Data Requirements
 
-*Finance Ledger Web*
+*Monilog Web*
 
 ## Overview
 
-This document defines the data requirements for Finance Ledger as a React-based web application with offline-first behavior.
+This document defines the data requirements for Monilog as a React-based web application with offline-first behavior.
 
 Implementation direction:
 
@@ -421,4 +421,4 @@ The following remain derived instead of persisted as source-of-truth tables:
 
 ## Summary
 
-Finance Ledger now has a browser-aligned data model: local IndexedDB source data, remote Supabase continuity, and local sync metadata that bridges the two. The finance domain remains the same; only the delivery architecture has changed.
+Monilog now has a browser-aligned data model: local IndexedDB source data, remote Supabase continuity, and local sync metadata that bridges the two. The finance domain remains the same; only the delivery architecture has changed.

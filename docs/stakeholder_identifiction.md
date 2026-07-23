@@ -1,10 +1,10 @@
 # Stakeholder Identification
 
-*Finance Ledger - Smart Financial Tracking & Analytics Tool*
+*Monilog - Smart Financial Tracking & Analytics Tool*
 
 ## Introduction
 
-This document identifies the key stakeholders involved in or affected by the Finance Ledger system, together with their interests, responsibilities, and influence.
+This document identifies the key stakeholders involved in or affected by the Monilog system, together with their interests, responsibilities, and influence.
 
 ## Stakeholder Categories
 
@@ -116,4 +116,4 @@ The project groups stakeholders into four categories:
 
 ## Conclusion
 
-Finance Ledger should be designed first around end users and chat-based users, while still leaving room for technical scalability and richer browser-based workflows.
+Monilog should be designed first around end users and chat-based users, while still leaving room for technical scalability and richer browser-based workflows.

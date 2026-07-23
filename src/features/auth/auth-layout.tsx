@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { WalletCards } from "lucide-react";
 import { BrandLogo } from "@/components/navigation/brand-logo";
 import { Card, CardContent } from "@/components/ui/card";
+import { GoogleOneTap } from "@/features/auth/google-one-tap";
 
 interface AuthLayoutProps {
   eyebrow: string;
@@ -13,6 +14,7 @@ interface AuthLayoutProps {
 export function AuthLayout({ eyebrow, title, description, children }: AuthLayoutProps) {
   return (
     <div className="min-h-screen bg-soft-grid">
+      <GoogleOneTap />
       <div className="container flex min-h-screen items-center py-10">
         <div className="grid w-full gap-8 lg:grid-cols-[1.1fr,0.9fr] lg:items-center">
           <div className="hidden space-y-8 lg:block">

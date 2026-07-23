@@ -1,10 +1,10 @@
 # Feasibility Study
 
-*Finance Ledger - Smart Financial Tracking & Analytics Tool*
+*Monilog - Smart Financial Tracking & Analytics Tool*
 
 ## Introduction
 
-This document evaluates the feasibility of developing Finance Ledger from technical, financial, operational, and schedule perspectives.
+This document evaluates the feasibility of developing Monilog from technical, financial, operational, and schedule perspectives.
 
 ## Technical Feasibility
 
@@ -52,7 +52,7 @@ The project is technically feasible with moderate complexity, with offline sync 
 
 ### Conclusion
 
-Finance Ledger is financially feasible for an MVP with relatively low initial investment.
+Monilog is financially feasible for an MVP with relatively low initial investment.
 
 ## Operational Feasibility
 
@@ -90,4 +90,4 @@ The project is schedule-feasible for an MVP if scope is controlled and delivery 
 
 ## Final Assessment
 
-Finance Ledger is feasible overall. The best path forward is a phased delivery strategy that validates the web experience, offline behavior, and chatbot value before investing in deeper integrations and automation.
+Monilog is feasible overall. The best path forward is a phased delivery strategy that validates the web experience, offline behavior, and chatbot value before investing in deeper integrations and automation.

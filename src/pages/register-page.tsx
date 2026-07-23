@@ -1,13 +1,14 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Sparkles } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { Link } from "react-router-dom";
 import { FieldShell } from "@/components/forms/field-shell";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { AuthDivider } from "@/features/auth/auth-divider";
 import { AuthLayout } from "@/features/auth/auth-layout";
+import { GoogleAuthButton } from "@/features/auth/google-auth-button";
 import { registerSchema, type RegisterFormValues } from "@/features/auth/schemas";
 import { ROUTES } from "@/routes/route-constants";
 import { useAuthStore } from "@/store/auth-store";
@@ -19,6 +20,7 @@ export function RegisterPage() {
   const error = useAuthStore((state) => state.error);
   const notice = useAuthStore((state) => state.notice);
   const clearMessages = useAuthStore((state) => state.clearMessages);
+  const [googleLoading, setGoogleLoading] = useState(false);
 
   const form = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
@@ -45,14 +47,20 @@ export function RegisterPage() {
   }
 
   async function handleGoogle() {
+    form.clearErrors("root");
+    setGoogleLoading(true);
     try {
       await signInWithGoogle();
     } catch (submitError) {
       form.setError("root", {
         message: submitError instanceof Error ? submitError.message : "Google sign-in failed."
       });
+    } finally {
+      setGoogleLoading(false);
     }
   }
+
+  const formError = form.formState.errors.root?.message ?? error;
 
   return (
     <AuthLayout
@@ -60,8 +68,7 @@ export function RegisterPage() {
       title="Register"
       description="Start with a real authenticated identity, then move through currency, balances, reminders, and your ledger setup."
     >
-      {/* eslint-disable-next-line @typescript-eslint/no-misused-promises */}
-      <form className="grid gap-5" onSubmit={form.handleSubmit(onSubmit)}>
+      <div className="grid gap-5">
         {!authAvailable ? (
           <Card className="border-dashed border-accent/30 bg-accent/5">
             <CardContent className="p-4 text-sm leading-6 text-muted-foreground">
@@ -76,70 +83,84 @@ export function RegisterPage() {
           </Card>
         ) : null}
 
-        {error || form.formState.errors.root?.message ? (
+        {formError ? (
           <Card className="border-danger/20 bg-danger/5">
-            <CardContent className="p-4 text-sm text-danger">
-              {form.formState.errors.root?.message ?? error}
-            </CardContent>
+            <CardContent className="p-4 text-sm text-danger">{formError}</CardContent>
           </Card>
         ) : null}
 
-        <FieldShell
-          label="Full name"
-          htmlFor="fullName"
-          error={form.formState.errors.fullName?.message}
-        >
-          <Input id="fullName" hasError={Boolean(form.formState.errors.fullName)} {...form.register("fullName")} />
-        </FieldShell>
+        <GoogleAuthButton
+          label="Sign up with Google"
+          disabled={!authAvailable || form.formState.isSubmitting}
+          isLoading={googleLoading}
+          onClick={() => void handleGoogle()}
+        />
 
-        <FieldShell label="Email" htmlFor="email" error={form.formState.errors.email?.message}>
-          <Input
-            id="email"
-            type="email"
-            autoComplete="email"
-            hasError={Boolean(form.formState.errors.email)}
-            {...form.register("email")}
-          />
-        </FieldShell>
+        <AuthDivider label="or" />
 
-        <div className="grid gap-5 md:grid-cols-2">
+        {/* eslint-disable-next-line @typescript-eslint/no-misused-promises */}
+        <form className="grid gap-5" onSubmit={form.handleSubmit(onSubmit)}>
           <FieldShell
-            label="Password"
-            htmlFor="password"
-            error={form.formState.errors.password?.message}
+            label="Full name"
+            htmlFor="fullName"
+            error={form.formState.errors.fullName?.message}
           >
             <Input
-              id="password"
-              type="password"
-              autoComplete="new-password"
-              hasError={Boolean(form.formState.errors.password)}
-              {...form.register("password")}
+              id="fullName"
+              autoComplete="name"
+              hasError={Boolean(form.formState.errors.fullName)}
+              {...form.register("fullName")}
             />
           </FieldShell>
 
-          <FieldShell
-            label="Confirm password"
-            htmlFor="confirmPassword"
-            error={form.formState.errors.confirmPassword?.message}
-          >
+          <FieldShell label="Email" htmlFor="email" error={form.formState.errors.email?.message}>
             <Input
-              id="confirmPassword"
-              type="password"
-              autoComplete="new-password"
-              hasError={Boolean(form.formState.errors.confirmPassword)}
-              {...form.register("confirmPassword")}
+              id="email"
+              type="email"
+              autoComplete="email"
+              hasError={Boolean(form.formState.errors.email)}
+              {...form.register("email")}
             />
           </FieldShell>
-        </div>
 
-        <Button type="submit" isLoading={form.formState.isSubmitting} disabled={!authAvailable}>
-          Register
-        </Button>
+          <div className="grid gap-5 md:grid-cols-2">
+            <FieldShell
+              label="Password"
+              htmlFor="password"
+              error={form.formState.errors.password?.message}
+            >
+              <Input
+                id="password"
+                type="password"
+                autoComplete="new-password"
+                hasError={Boolean(form.formState.errors.password)}
+                {...form.register("password")}
+              />
+            </FieldShell>
 
-        <Button type="button" variant="outline" disabled={!authAvailable} onClick={() => void handleGoogle()}>
-          <Sparkles className="size-4" />
-          Continue with Google
-        </Button>
+            <FieldShell
+              label="Confirm password"
+              htmlFor="confirmPassword"
+              error={form.formState.errors.confirmPassword?.message}
+            >
+              <Input
+                id="confirmPassword"
+                type="password"
+                autoComplete="new-password"
+                hasError={Boolean(form.formState.errors.confirmPassword)}
+                {...form.register("confirmPassword")}
+              />
+            </FieldShell>
+          </div>
+
+          <Button
+            type="submit"
+            isLoading={form.formState.isSubmitting}
+            disabled={!authAvailable || googleLoading}
+          >
+            Register
+          </Button>
+        </form>
 
         <p className="text-sm text-muted-foreground">
           Already have an account?{" "}
@@ -147,7 +168,7 @@ export function RegisterPage() {
             Log in
           </Link>
         </p>
-      </form>
+      </div>
     </AuthLayout>
   );
 }

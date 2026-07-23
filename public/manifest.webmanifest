@@ -9,8 +9,14 @@
   "scope": "/",
   "icons": [
     {
-      "src": "/icons/fin_track_logo.png",
-      "sizes": "1721x1141",
+      "src": "/icons/monilog-white.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/monilog_icon.png",
+      "sizes": "2048x2048",
       "type": "image/png",
       "purpose": "any"
     }

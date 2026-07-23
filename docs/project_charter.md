@@ -1,14 +1,14 @@
 # Project Charter
 
-*Finance Ledger - Smart Financial Tracking & Analytics Tool*
+*Monilog - Smart Financial Tracking & Analytics Tool*
 
 ## Project Title
 
-Finance Ledger
+Monilog
 
 ## Project Purpose
 
-Finance Ledger is designed to provide a simple and efficient way for users to track income and expenses while gaining clear financial insight.
+Monilog is designed to provide a simple and efficient way for users to track income and expenses while gaining clear financial insight.
 
 The system reduces friction by supporting two input paths:
 
