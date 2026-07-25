@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { ANALYTICS_EVENTS } from "@/lib/analytics-events";
+import { trackEvent } from "@/services/firebase-analytics-service";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -25,6 +27,10 @@ export function useInstallPrompt() {
 
     await deferredPrompt.prompt();
     const choice = await deferredPrompt.userChoice;
+    trackEvent(ANALYTICS_EVENTS.installPromptResult, {
+      outcome: choice.outcome,
+      platform: choice.platform
+    });
     setDeferredPrompt(null);
     return choice;
   }

@@ -12,7 +12,7 @@ import { env, isFirebaseConfigured } from "@/lib/env";
 // page for identity). Auth handles sign-in; Firestore is the cloud mirror that the
 // planned WhatsApp chatbot will write into and the web syncs against. Dexie remains
 // the local-first source of truth (see src/services/sync-engine.ts).
-const firebaseApp = isFirebaseConfigured
+export const firebaseApp = isFirebaseConfigured
   ? getApps().length
     ? getApp()
     : initializeApp(env.firebase)

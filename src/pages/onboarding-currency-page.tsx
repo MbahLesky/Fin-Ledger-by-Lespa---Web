@@ -4,8 +4,10 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { ANALYTICS_EVENTS } from "@/lib/analytics-events";
 import { SUPPORTED_CURRENCIES } from "@/lib/constants";
 import { ROUTES } from "@/routes/route-constants";
+import { trackEvent } from "@/services/firebase-analytics-service";
 import { settingsRepository } from "@/db/repositories/settings-repository";
 
 export function OnboardingCurrencyPage() {
@@ -22,6 +24,10 @@ export function OnboardingCurrencyPage() {
       return;
     }
 
+    trackEvent(ANALYTICS_EVENTS.onboardingStepCompleted, {
+      step: "currency",
+      currency: settings.currencyCode
+    });
     navigate(path);
   }
 

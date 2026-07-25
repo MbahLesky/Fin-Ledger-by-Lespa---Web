@@ -9,6 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { accountsRepository } from "@/db/repositories/accounts-repository";
 import { categoriesRepository } from "@/db/repositories/categories-repository";
+import { ANALYTICS_EVENTS } from "@/lib/analytics-events";
+import { trackEvent } from "@/services/firebase-analytics-service";
 import { useLiveQuery } from "dexie-react-hooks";
 import type { ImportMappingChoice } from "@/types";
 
@@ -87,6 +89,11 @@ export function ImportWorkspace({
         `${result.successfulRecords} row${result.successfulRecords === 1 ? "" : "s"} imported. ${result.errorSummary}`.trim()
       );
       toast.success("Import completed.");
+      trackEvent(ANALYTICS_EVENTS.dataImported, {
+        format: "csv",
+        rows_imported: result.successfulRecords,
+        rows_failed: result.failedRecords
+      });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Import failed.");
     } finally {

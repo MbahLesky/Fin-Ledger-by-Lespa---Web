@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { AuthDivider } from "@/features/auth/auth-divider";
 import { AuthLayout } from "@/features/auth/auth-layout";
 import { GoogleAuthButton } from "@/features/auth/google-auth-button";
+import { useInviteCode } from "@/features/auth/use-invite-code";
 import { ROUTES } from "@/routes/route-constants";
 import { loginSchema, type LoginFormValues } from "@/features/auth/schemas";
 import { useAuthStore } from "@/store/auth-store";
@@ -22,6 +23,10 @@ export function LoginPage() {
   const notice = useAuthStore((state) => state.notice);
   const clearMessages = useAuthStore((state) => state.clearMessages);
   const [googleLoading, setGoogleLoading] = useState(false);
+
+  // Google sign-in creates an account when there is none, so a tester arriving on
+  // a partner link (/login?code=LEADERS) still gets attributed to that code.
+  const inviteCode = useInviteCode();
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -49,7 +54,7 @@ export function LoginPage() {
     form.clearErrors("root");
     setGoogleLoading(true);
     try {
-      await signInWithGoogle();
+      await signInWithGoogle(inviteCode);
     } catch (submitError) {
       form.setError("root", {
         message: submitError instanceof Error ? submitError.message : "Google sign-in failed."

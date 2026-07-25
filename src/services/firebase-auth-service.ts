@@ -1,6 +1,7 @@
 import {
   GoogleAuthProvider,
   createUserWithEmailAndPassword,
+  deleteUser,
   onAuthStateChanged,
   sendEmailVerification,
   sendPasswordResetEmail,
@@ -14,6 +15,11 @@ import {
 import { withMappedAuthError } from "@/features/auth/auth-errors";
 import { firebaseAuth } from "@/lib/firebase-client";
 
+// Only roll back an account created moments ago, so a rejected invite code can
+// never delete a pre-existing user who was merely signing in. Matches the guard in
+// the landing page's register-tester route.
+const JUST_CREATED_MS = 5 * 60 * 1000;
+
 function assertAuth() {
   if (!firebaseAuth) {
     throw new Error(
@@ -22,6 +28,15 @@ function assertAuth() {
   }
 
   return firebaseAuth;
+}
+
+function wasJustCreated(user: User): boolean {
+  const created = Date.parse(user.metadata.creationTime ?? "");
+  if (Number.isNaN(created)) {
+    return false;
+  }
+
+  return Date.now() - created < JUST_CREATED_MS;
 }
 
 export const firebaseAuthService = {
@@ -75,6 +90,29 @@ export const firebaseAuthService = {
   async signOut() {
     const auth = assertAuth();
     await signOut(auth);
+  },
+
+  /**
+   * Removes the signed-in account when it was created within the last few minutes,
+   * used to undo a sign-up that was rejected by the invite-code gate. Returns
+   * false — leaving the account untouched — for anyone who existed beforehand.
+   */
+  async deleteJustCreatedUser(): Promise<boolean> {
+    const auth = assertAuth();
+    const current = auth.currentUser;
+    if (!current || !wasJustCreated(current)) {
+      return false;
+    }
+
+    try {
+      await deleteUser(current);
+      return true;
+    } catch (error) {
+      // Firebase requires a recent credential; if it refuses, the caller signs the
+      // user out instead and the account simply remains.
+      console.error("Failed to roll back rejected account:", error);
+      return false;
+    }
   },
 
   // Best-effort: a verification email that fails to send must never block a

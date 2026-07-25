@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageShell } from "@/components/layout/page-shell";
 import { csvExportService } from "@/services/csv-export-service";
+import { ANALYTICS_EVENTS } from "@/lib/analytics-events";
+import { trackEvent } from "@/services/firebase-analytics-service";
 import { formatShortDate } from "@/utils/date-utils";
 
 export function ExportPage() {
@@ -15,6 +17,7 @@ export function ExportPage() {
     try {
       await csvExportService.exportTransactions();
       toast.success("Transactions CSV downloaded.");
+      trackEvent(ANALYTICS_EVENTS.dataExported, { format: "csv", dataset: "transactions" });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Unable to export data.");
     }
@@ -24,6 +27,7 @@ export function ExportPage() {
     try {
       await csvExportService.exportTransfers();
       toast.success("Transfers CSV downloaded.");
+      trackEvent(ANALYTICS_EVENTS.dataExported, { format: "csv", dataset: "transfers" });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Unable to export transfers.");
     }

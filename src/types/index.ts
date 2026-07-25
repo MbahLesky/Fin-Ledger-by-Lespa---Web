@@ -1,4 +1,5 @@
 export * from "@/types/account";
+export * from "@/types/beta-tester";
 export * from "@/types/category";
 export * from "@/types/common";
 export * from "@/types/history";

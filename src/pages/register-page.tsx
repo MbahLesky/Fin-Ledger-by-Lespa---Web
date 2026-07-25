@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { AuthDivider } from "@/features/auth/auth-divider";
 import { AuthLayout } from "@/features/auth/auth-layout";
 import { GoogleAuthButton } from "@/features/auth/google-auth-button";
+import { useInviteCode } from "@/features/auth/use-invite-code";
 import { registerSchema, type RegisterFormValues } from "@/features/auth/schemas";
 import { ROUTES } from "@/routes/route-constants";
 import { useAuthStore } from "@/store/auth-store";
@@ -22,15 +23,28 @@ export function RegisterPage() {
   const clearMessages = useAuthStore((state) => state.clearMessages);
   const [googleLoading, setGoogleLoading] = useState(false);
 
+  // Seeded from /register?code=LEADERS (or a code captured earlier in the session),
+  // so a tester following a partner link never retypes it.
+  const inviteCodeFromUrl = useInviteCode();
+
   const form = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
       fullName: "",
       email: "",
       password: "",
-      confirmPassword: ""
+      confirmPassword: "",
+      inviteCode: ""
     }
   });
+
+  const { setValue } = form;
+
+  useEffect(() => {
+    if (inviteCodeFromUrl) {
+      setValue("inviteCode", inviteCodeFromUrl);
+    }
+  }, [inviteCodeFromUrl, setValue]);
 
   useEffect(() => {
     return () => clearMessages();
@@ -38,7 +52,7 @@ export function RegisterPage() {
 
   async function onSubmit(values: RegisterFormValues) {
     try {
-      await signUp(values.fullName, values.email, values.password);
+      await signUp(values.fullName, values.email, values.password, values.inviteCode ?? "");
     } catch (submitError) {
       form.setError("root", {
         message: submitError instanceof Error ? submitError.message : "Unable to register."
@@ -50,7 +64,7 @@ export function RegisterPage() {
     form.clearErrors("root");
     setGoogleLoading(true);
     try {
-      await signInWithGoogle();
+      await signInWithGoogle(form.getValues("inviteCode") ?? "");
     } catch (submitError) {
       form.setError("root", {
         message: submitError instanceof Error ? submitError.message : "Google sign-in failed."
@@ -151,6 +165,30 @@ export function RegisterPage() {
                 {...form.register("confirmPassword")}
               />
             </FieldShell>
+          </div>
+
+          <div className="grid gap-2">
+            <FieldShell
+              label="Access code"
+              htmlFor="inviteCode"
+              hint="Optional"
+              error={form.formState.errors.inviteCode?.message}
+            >
+              <Input
+                id="inviteCode"
+                autoCapitalize="characters"
+                autoComplete="off"
+                placeholder="e.g. LEADERS"
+                hasError={Boolean(form.formState.errors.inviteCode)}
+                {...form.register("inviteCode", {
+                  setValueAs: (value: string) => value.trim().toUpperCase()
+                })}
+              />
+            </FieldShell>
+            <p className="text-xs leading-5 text-muted-foreground">
+              Have a code from an organization or partner? Enter it — otherwise leave it blank to
+              join as a general tester.
+            </p>
           </div>
 
           <Button

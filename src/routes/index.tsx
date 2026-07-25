@@ -19,92 +19,100 @@ import { AuthRoute } from "@/routes/auth-route";
 import { OnboardingRoute } from "@/routes/onboarding-route";
 import { ProtectedRoute } from "@/routes/protected-route";
 import { RootRedirect } from "@/routes/root-redirect";
+import { RouteAnalytics } from "@/routes/route-analytics";
 import { ROUTES } from "@/routes/route-constants";
 
+// Every route sits under the pathless RouteAnalytics layout so client-side
+// navigations are reported as page views.
 const router = createBrowserRouter([
   {
-    path: ROUTES.root,
-    element: <RootRedirect />
-  },
-  {
-    element: <AuthRoute />,
+    element: <RouteAnalytics />,
     children: [
       {
-        path: ROUTES.login,
-        element: <LoginPage />
+        path: ROUTES.root,
+        element: <RootRedirect />
       },
       {
-        path: ROUTES.register,
-        element: <RegisterPage />
-      }
-    ]
-  },
-  {
-    element: <OnboardingRoute />,
-    children: [
-      {
-        path: ROUTES.onboardingCurrency,
-        element: <OnboardingCurrencyPage />
-      },
-      {
-        path: ROUTES.onboardingImport,
-        element: <OnboardingImportPage />
-      },
-      {
-        path: ROUTES.onboardingBalances,
-        element: <OnboardingBalancesPage />
-      },
-      {
-        path: ROUTES.onboardingReminder,
-        element: <OnboardingReminderPage />
-      }
-    ]
-  },
-  {
-    element: <ProtectedRoute />,
-    children: [
-      {
-        element: <AppShell />,
+        element: <AuthRoute />,
         children: [
           {
-            path: ROUTES.dashboard,
-            element: <DashboardPage />
+            path: ROUTES.login,
+            element: <LoginPage />
           },
           {
-            path: ROUTES.transactions,
-            element: <TransactionsPage />
-          },
-          {
-            path: ROUTES.addTransaction,
-            element: <AddTransactionPage />
-          },
-          {
-            path: ROUTES.transfer,
-            element: <TransferPage />
-          },
-          {
-            path: ROUTES.analytics,
-            element: <AnalyticsPage />
-          },
-          {
-            path: ROUTES.settings,
-            element: <SettingsPage />
-          },
-          {
-            path: ROUTES.importData,
-            element: <ImportPage />
-          },
-          {
-            path: ROUTES.exportData,
-            element: <ExportPage />
+            path: ROUTES.register,
+            element: <RegisterPage />
           }
         ]
+      },
+      {
+        element: <OnboardingRoute />,
+        children: [
+          {
+            path: ROUTES.onboardingCurrency,
+            element: <OnboardingCurrencyPage />
+          },
+          {
+            path: ROUTES.onboardingImport,
+            element: <OnboardingImportPage />
+          },
+          {
+            path: ROUTES.onboardingBalances,
+            element: <OnboardingBalancesPage />
+          },
+          {
+            path: ROUTES.onboardingReminder,
+            element: <OnboardingReminderPage />
+          }
+        ]
+      },
+      {
+        element: <ProtectedRoute />,
+        children: [
+          {
+            element: <AppShell />,
+            children: [
+              {
+                path: ROUTES.dashboard,
+                element: <DashboardPage />
+              },
+              {
+                path: ROUTES.transactions,
+                element: <TransactionsPage />
+              },
+              {
+                path: ROUTES.addTransaction,
+                element: <AddTransactionPage />
+              },
+              {
+                path: ROUTES.transfer,
+                element: <TransferPage />
+              },
+              {
+                path: ROUTES.analytics,
+                element: <AnalyticsPage />
+              },
+              {
+                path: ROUTES.settings,
+                element: <SettingsPage />
+              },
+              {
+                path: ROUTES.importData,
+                element: <ImportPage />
+              },
+              {
+                path: ROUTES.exportData,
+                element: <ExportPage />
+              }
+            ]
+          }
+        ]
+      },
+      {
+        path: "*",
+        element: <NotFoundPage />
       }
     ]
-  },
-  {
-    path: "*",
-    element: <NotFoundPage />
   }
 ]);
 

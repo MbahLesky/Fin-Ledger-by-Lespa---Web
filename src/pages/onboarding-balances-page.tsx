@@ -8,7 +8,9 @@ import { FieldShell } from "@/components/forms/field-shell";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { ANALYTICS_EVENTS } from "@/lib/analytics-events";
 import { ROUTES } from "@/routes/route-constants";
+import { trackEvent } from "@/services/firebase-analytics-service";
 import { useAuthStore } from "@/store/auth-store";
 
 interface BalanceFormValues {
@@ -85,6 +87,12 @@ export function OnboardingBalancesPage() {
     );
 
     toast.success("Starting balances saved.");
+    // Counts only — no balance figures leave the device.
+    trackEvent(ANALYTICS_EVENTS.onboardingStepCompleted, {
+      step: "balances",
+      accounts_created: newRows.length,
+      accounts_updated: existingRows.length
+    });
     navigate(ROUTES.onboardingReminder);
   }
 

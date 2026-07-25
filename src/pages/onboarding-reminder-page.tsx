@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { settingsRepository } from "@/db/repositories/settings-repository";
 import { useReminderPermission } from "@/hooks/use-reminder-permission";
+import { ANALYTICS_EVENTS } from "@/lib/analytics-events";
+import { trackEvent } from "@/services/firebase-analytics-service";
 import { ROUTES } from "@/routes/route-constants";
 
 export function OnboardingReminderPage() {
@@ -17,6 +19,10 @@ export function OnboardingReminderPage() {
 
   async function finishOnboarding() {
     await settingsRepository.setOnboardingComplete(true);
+    trackEvent(ANALYTICS_EVENTS.onboardingStepCompleted, { step: "reminder" });
+    trackEvent(ANALYTICS_EVENTS.onboardingCompleted, {
+      reminders_enabled: Boolean(preferences?.enabled)
+    });
     toast.success("Setup complete.");
     navigate(ROUTES.dashboard);
   }

@@ -12,6 +12,8 @@ import { accountsRepository } from "@/db/repositories/accounts-repository";
 import { settingsRepository } from "@/db/repositories/settings-repository";
 import { transfersRepository } from "@/db/repositories/transfers-repository";
 import { transferSchema, type TransferFormValues } from "@/features/transfers/transfer-schema";
+import { ANALYTICS_EVENTS } from "@/lib/analytics-events";
+import { trackEvent } from "@/services/firebase-analytics-service";
 import { DEFAULT_CURRENCY } from "@/lib/constants";
 import type { TransferRecord } from "@/types";
 import { toDateInputValue } from "@/utils/date-utils";
@@ -102,6 +104,11 @@ export function TransferForm({ initialValue, userId, submitLabel = "Save transfe
       } else {
         await transfersRepository.createTransfer({ ...values, userId });
         toast.success("Transfer saved locally.");
+        // Fee presence is useful signal; the amounts themselves are not sent.
+        trackEvent(ANALYTICS_EVENTS.transferCreated, {
+          has_source_fee: Number(values.sourceFee) > 0,
+          has_destination_fee: Number(values.destinationFee) > 0
+        });
         form.reset({
           ...values,
           amount: 0,

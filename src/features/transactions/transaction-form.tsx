@@ -6,6 +6,8 @@ import { toast } from "sonner";
 import { categoriesRepository } from "@/db/repositories/categories-repository";
 import { accountsRepository } from "@/db/repositories/accounts-repository";
 import { transactionsRepository } from "@/db/repositories/transactions-repository";
+import { ANALYTICS_EVENTS } from "@/lib/analytics-events";
+import { trackEvent } from "@/services/firebase-analytics-service";
 import { FieldShell } from "@/components/forms/field-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -81,6 +83,13 @@ export function TransactionForm({
           userId
         });
         toast.success("Transaction saved locally.");
+        // Amount is deliberately omitted — event parameters must not carry a
+        // user's actual financial figures.
+        trackEvent(ANALYTICS_EVENTS.transactionAdded, {
+          type: values.type,
+          affects_balance: values.affectsAccountBalance,
+          has_description: Boolean(values.description?.trim())
+        });
         form.reset({
           amount: 0,
           type: values.type,
