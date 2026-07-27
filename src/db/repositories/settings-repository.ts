@@ -28,6 +28,21 @@ export const settingsRepository = {
     return settings ?? createDefaultSettings();
   },
 
+  // Local storage is a single, unpartitioned store shared by whichever account
+  // last signed in on this browser. When it currently belongs to someone else,
+  // its fields must not be carried forward onto a new owner — that would leak
+  // the previous account's onboarding/preference state, and a fresh `updatedAt`
+  // stamp would block the new owner's real synced state from ever being pulled
+  // down. Resetting to a never-synced default clears the slate before that pull
+  // runs.
+  async resetSettingsOwnership() {
+    await appDb.settings.put(createDefaultSettings());
+  },
+
+  async resetNotificationPreferencesOwnership() {
+    await appDb.notificationPreferences.put(createDefaultNotificationPreferences());
+  },
+
   async updateSettings(
     updates: Partial<
       Pick<

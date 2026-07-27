@@ -9,6 +9,14 @@ import {
 import type { Account, AppSettings, Category, NotificationPreference } from "@/types";
 import { nowIso } from "@/utils/date-utils";
 
+// A never-synced placeholder row must always lose a last-write-wins comparison
+// against a genuine remote record — otherwise a device syncing for the first
+// time (or after local storage was reset/reassigned to another account) seeds
+// `updatedAt` to "now", which outranks the real, older remote history and blocks
+// it from ever being pulled down (e.g. onboarding wrongly re-triggering for a
+// user who already completed it elsewhere).
+const NEVER_SYNCED = new Date(0).toISOString();
+
 export function createDefaultSettings(): AppSettings {
   const timestamp = nowIso();
 
@@ -25,7 +33,7 @@ export function createDefaultSettings(): AppSettings {
     syncError: null,
     lastSyncedAt: null,
     createdAt: timestamp,
-    updatedAt: timestamp
+    updatedAt: NEVER_SYNCED
   };
 }
 
@@ -43,7 +51,7 @@ export function createDefaultNotificationPreferences(): NotificationPreference {
     syncError: null,
     lastSyncedAt: null,
     createdAt: timestamp,
-    updatedAt: timestamp
+    updatedAt: NEVER_SYNCED
   };
 }
 

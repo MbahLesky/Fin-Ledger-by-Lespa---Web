@@ -171,11 +171,19 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       return;
     }
 
-    await workspaceRepository.stampOwnership(user.uid);
-
     // Only the opaque uid — never email or display name — so analytics holds no
     // directly identifying data.
     identifyUser(user.uid);
+
+    // Order matters: release any stale ownership *before* pulling, so the pull
+    // can populate this account's real state onto a clean row instead of one
+    // still stamped (and freshly timestamped) for a previous local user or a
+    // just-seeded placeholder. Only claim ownership *after* the pull, so a
+    // returning user's already-correct data is left untouched rather than
+    // re-stamped with a "now" timestamp that would outrank their own history.
+    await workspaceRepository.releaseStaleOwnership(user.uid);
+    await useSyncStore.getState().runNow(user.uid);
+    await workspaceRepository.stampOwnership(user.uid);
 
     set({
       status: "signed_in",
@@ -183,8 +191,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       profile: profileFromUser(user),
       error: null
     });
-
-    await useSyncStore.getState().runNow(user.uid);
   },
 
   signIn: async (email, password) => {
