@@ -156,8 +156,12 @@ export const accountsRepository = {
     await syncRepository.enqueue("accounts", next.id, "delete", JSON.stringify(next));
   },
 
+  // Claims only rows nobody owns yet — the seeded placeholders. Re-stamping rows
+  // that already carry a uid would bump `updatedAt` and re-queue the whole ledger
+  // on every sign-in, and rows belonging to another account on this browser must
+  // never be filed under this user.
   async stampOwnership(userId: string) {
-    const records = await appDb.accounts.toArray();
+    const records = await appDb.accounts.filter((record) => !record.userId).toArray();
     await Promise.all(
       records.map((record) =>
         this.updateAccount(record.id, {

@@ -10,7 +10,7 @@ export function AppBootstrap() {
   const bootstrap = useAuthStore((state) => state.bootstrap);
   const hydrateFromUser = useAuthStore((state) => state.hydrateFromUser);
   const userId = useAuthStore((state) => state.user?.uid);
-  const runNow = useSyncStore((state) => state.runNow);
+  const syncWorkspace = useAuthStore((state) => state.syncWorkspace);
   const refreshSync = useSyncStore((state) => state.refresh);
 
   useLanguageSync();
@@ -38,8 +38,11 @@ export function AppBootstrap() {
 
   useEffect(() => {
     function handleConnectivityChange() {
+      // Goes through the workspace sync rather than the raw engine so a session
+      // that started offline still claims ownership of its seeded rows (and
+      // settles its onboarding state) once the network returns.
       if (userId && navigator.onLine) {
-        void runNow(userId);
+        void syncWorkspace(userId);
         return;
       }
 
@@ -53,7 +56,7 @@ export function AppBootstrap() {
       window.removeEventListener("online", handleConnectivityChange);
       window.removeEventListener("offline", handleConnectivityChange);
     };
-  }, [refreshSync, runNow, userId]);
+  }, [refreshSync, syncWorkspace, userId]);
 
   return null;
 }

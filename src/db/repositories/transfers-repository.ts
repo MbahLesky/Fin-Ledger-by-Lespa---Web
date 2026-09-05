@@ -257,7 +257,7 @@ export const transfersRepository = {
       return;
     }
 
-    const records = await transfersTable.toArray();
+    const records = await transfersTable.filter((record) => !record.userId).toArray();
     await Promise.all(
       records.map((record) =>
         transfersTable.put({

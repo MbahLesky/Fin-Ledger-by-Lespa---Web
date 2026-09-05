@@ -10,6 +10,14 @@ import {
 import { appDb, getOptionalTable } from "@/db/dexie";
 import { syncRepository } from "@/db/repositories/sync-repository";
 import { firestore } from "@/lib/firebase-client";
+import {
+  SYNC_ENTITY_NAMES,
+  clearCheckpoints,
+  clearLegacyCheckpoints,
+  getCheckpoint,
+  setCheckpoint
+} from "@/services/sync-checkpoints";
+import { shouldApplyRemoteRecord, toIsoTimestamp } from "@/services/sync-merge";
 import type {
   Account,
   AppSettings,
@@ -18,14 +26,11 @@ import type {
   SyncableEntity,
   SyncEntityName,
   SyncOperationRecord,
+  SyncRunResult,
   TransferRecord,
   TransactionRecord
 } from "@/types";
 import { nowIso } from "@/utils/date-utils";
-
-// Checkpoint prefix is bumped from the old Supabase engine ("finance-ledger-*") so
-// the one-time backend switch starts each entity's pull cursor fresh.
-const CHECKPOINT_PREFIX = "monilog-firestore-checkpoint";
 
 type SyncableRecord =
   | Account
@@ -41,26 +46,6 @@ function assertFirestore() {
   }
 
   return firestore;
-}
-
-function getCheckpointKey(entityName: SyncEntityName) {
-  return `${CHECKPOINT_PREFIX}:${entityName}`;
-}
-
-function getCheckpoint(entityName: SyncEntityName) {
-  if (typeof window === "undefined") {
-    return null;
-  }
-
-  return window.localStorage.getItem(getCheckpointKey(entityName));
-}
-
-function setCheckpoint(entityName: SyncEntityName, value: string) {
-  if (typeof window === "undefined") {
-    return;
-  }
-
-  window.localStorage.setItem(getCheckpointKey(entityName), value);
 }
 
 function getSyncTable(entityName: SyncEntityName) {
@@ -114,6 +99,7 @@ function toRemoteDoc(record: SyncableRecord) {
 function fromRemoteDoc(entityName: SyncEntityName, data: Record<string, unknown>): SyncableRecord {
   const base = {
     ...data,
+    updatedAt: toIsoTimestamp(data.updatedAt),
     remoteId: String(data.id),
     syncStatus: "synced" as const,
     syncError: null,
@@ -172,6 +158,13 @@ async function pushOperation(operation: SyncOperationRecord, userId: string) {
     throw new Error("Local record is missing authenticated ownership.");
   }
 
+  // Left behind by a different account on this browser. Pushing it would file
+  // their record under this user's uid, so drop the operation instead.
+  if (record.userId !== userId) {
+    await syncRepository.remove(operation.id);
+    return;
+  }
+
   await syncRepository.markProcessing(operation.id);
 
   try {
@@ -188,9 +181,46 @@ async function pushOperation(operation: SyncOperationRecord, userId: string) {
   await syncRepository.remove(operation.id);
 }
 
+/**
+ * How many rows of this entity already belong to the signed-in user. A cursor is
+ * only meaningful next to the rows it was earned against: when this device holds
+ * none of the user's data (fresh browser, evicted IndexedDB, "Reset app data", or
+ * a browser previously used by someone else), an inherited cursor would skip
+ * their entire remote history and leave the app showing an empty ledger. In that
+ * state the cursor is ignored and the pull starts from the beginning.
+ */
+async function countOwnedRecords(entityName: SyncEntityName, userId: string) {
+  const table = getSyncTable(entityName) as unknown as {
+    where: (index: string) => { equals: (value: string) => { count: () => Promise<number> } };
+  };
+
+  try {
+    return await table.where("userId").equals(userId).count();
+  } catch {
+    // A missing index must never block the pull — assume nothing is owned, which
+    // only costs one full pull.
+    return 0;
+  }
+}
+
+async function resolveCheckpoint(entityName: SyncEntityName, userId: string) {
+  const checkpoint = getCheckpoint(entityName, userId);
+  if (!checkpoint) {
+    return null;
+  }
+
+  const owned = await countOwnedRecords(entityName, userId);
+  if (owned > 0) {
+    return checkpoint;
+  }
+
+  clearCheckpoints(userId);
+  return null;
+}
+
 async function pullTable(entityName: SyncEntityName, userId: string) {
   const db = assertFirestore();
-  const checkpoint = getCheckpoint(entityName);
+  const checkpoint = await resolveCheckpoint(entityName, userId);
   const collectionRef = collection(db, "users", userId, entityName);
   const constraints = checkpoint
     ? [where("updatedAt", ">", checkpoint), orderBy("updatedAt", "asc")]
@@ -206,25 +236,33 @@ async function pullTable(entityName: SyncEntityName, userId: string) {
     const remoteRecord = fromRemoteDoc(entityName, data);
     const localRecord = (await table.get(remoteRecord.id)) as SyncableRecord | undefined;
 
-    if (!localRecord || remoteRecord.updatedAt >= localRecord.updatedAt) {
+    if (shouldApplyRemoteRecord(remoteRecord.updatedAt, localRecord?.updatedAt)) {
       await table.put(remoteRecord as never);
     }
 
-    if (typeof data.updatedAt === "string") {
-      latestUpdatedAt = data.updatedAt;
-    }
+    latestUpdatedAt = remoteRecord.updatedAt;
   }
 
   if (latestUpdatedAt) {
-    setCheckpoint(entityName, latestUpdatedAt);
+    setCheckpoint(entityName, userId, latestUpdatedAt);
   }
+
+  return snapshot.size;
 }
 
 export const syncEngine = {
-  async run(userId: string) {
+  /**
+   * Pushes queued local changes, then pulls the account's remote records.
+   * `pulled` reports whether the pull actually completed: callers must not treat
+   * local state as this account's true state when it is false, or an offline
+   * sign-in looks indistinguishable from an empty account.
+   */
+  async run(userId: string): Promise<SyncRunResult> {
     if (!navigator.onLine || !firestore) {
-      return syncRepository.summarize();
+      return { ...(await syncRepository.summarize()), pulled: false };
     }
+
+    clearLegacyCheckpoints();
 
     const pendingOperations = await syncRepository.listPending();
 
@@ -236,15 +274,8 @@ export const syncEngine = {
       }
     }
 
-    await Promise.all([
-      pullTable("accounts", userId),
-      pullTable("categories", userId),
-      pullTable("transactions", userId),
-      pullTable("transfers", userId),
-      pullTable("settings", userId),
-      pullTable("notificationPreferences", userId)
-    ]);
+    await Promise.all(SYNC_ENTITY_NAMES.map((entityName) => pullTable(entityName, userId)));
 
-    return syncRepository.summarize();
+    return { ...(await syncRepository.summarize()), pulled: true };
   }
 };

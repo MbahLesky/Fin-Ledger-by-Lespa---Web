@@ -184,8 +184,9 @@ export const transactionsRepository = {
     );
   },
 
+  // Unowned rows only — see accountsRepository.stampOwnership.
   async stampOwnership(userId: string) {
-    const records = await appDb.transactions.toArray();
+    const records = await appDb.transactions.filter((record) => !record.userId).toArray();
     await Promise.all(
       records.map((record) =>
         this.updateTransaction(record.id, {

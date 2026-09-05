@@ -24,6 +24,7 @@ interface AuthState {
   notice: string | null;
   bootstrap: () => Promise<void>;
   hydrateFromUser: (user: User | null) => Promise<void>;
+  syncWorkspace: (userId: string) => Promise<boolean>;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (
     fullName: string,
@@ -56,6 +57,10 @@ const INVALID_CODE_MESSAGE =
 
 const ROSTER_UNAVAILABLE_MESSAGE =
   "We couldn't confirm your beta access just now. Please try again in a moment.";
+
+// How long sign-in waits for the first sync before showing the app anyway. The
+// pull keeps running in the background; this only bounds the restore screen.
+const SIGN_IN_SYNC_TIMEOUT_MS = 15_000;
 
 /**
  * Claims a beta-tester place for a freshly authenticated user. A rejected code
@@ -175,22 +180,53 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     // directly identifying data.
     identifyUser(user.uid);
 
-    // Order matters: release any stale ownership *before* pulling, so the pull
-    // can populate this account's real state onto a clean row instead of one
-    // still stamped (and freshly timestamped) for a previous local user or a
-    // just-seeded placeholder. Only claim ownership *after* the pull, so a
-    // returning user's already-correct data is left untouched rather than
-    // re-stamped with a "now" timestamp that would outrank their own history.
-    await workspaceRepository.releaseStaleOwnership(user.uid);
-    await useSyncStore.getState().runNow(user.uid);
-    await workspaceRepository.stampOwnership(user.uid);
+    try {
+      // Bounded, and never fatal: a sync that fails or stalls must not strand the
+      // user on "Restoring your session..." — the ledger is local-first, and a
+      // pull that lands late still reaches the screen through Dexie's live
+      // queries.
+      await Promise.race([
+        get().syncWorkspace(user.uid),
+        new Promise((resolve) => window.setTimeout(resolve, SIGN_IN_SYNC_TIMEOUT_MS))
+      ]);
+    } catch (syncError) {
+      console.error("Workspace sync failed while restoring the session:", syncError);
+    } finally {
+      set({
+        status: "signed_in",
+        user,
+        profile: profileFromUser(user),
+        error: null
+      });
+    }
+  },
 
-    set({
-      status: "signed_in",
-      user,
-      profile: profileFromUser(user),
-      error: null
-    });
+  /**
+   * Reconciles this browser's local workspace with the signed-in account.
+   *
+   * Order matters: release any stale ownership *before* pulling, so the pull can
+   * populate this account's real state onto a clean row instead of one still
+   * stamped (and freshly timestamped) for a previous local user or a just-seeded
+   * placeholder. Claim ownership only *after* a pull that actually succeeded — a
+   * returning user's data is then already correct and left untouched, and a
+   * failed pull can never push placeholder rows over their real remote records.
+   */
+  syncWorkspace: async (userId) => {
+    if (!isFirebaseConfigured || !navigator.onLine) {
+      await useSyncStore.getState().refresh();
+      return false;
+    }
+
+    await workspaceRepository.releaseStaleOwnership(userId);
+
+    const pulled = await useSyncStore.getState().runNow(userId);
+    if (!pulled) {
+      return false;
+    }
+
+    await workspaceRepository.reconcileOnboardingState();
+    await workspaceRepository.stampOwnership(userId);
+    return true;
   },
 
   signIn: async (email, password) => {

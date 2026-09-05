@@ -112,8 +112,9 @@ export const categoriesRepository = {
     await syncRepository.enqueue("categories", next.id, "delete", JSON.stringify(next));
   },
 
+  // Unowned (seeded) rows only — see accountsRepository.stampOwnership.
   async stampOwnership(userId: string) {
-    const records = await appDb.categories.toArray();
+    const records = await appDb.categories.filter((record) => !record.userId).toArray();
     await Promise.all(
       records.map((record) =>
         this.updateCategory(record.id, {

@@ -6,7 +6,9 @@ import type { SyncSummary } from "@/types";
 interface SyncState extends SyncSummary {
   error: string | null;
   refresh: () => Promise<void>;
-  runNow: (userId: string) => Promise<void>;
+  // Resolves to true only when the remote pull completed, so sign-in can tell an
+  // account with no data apart from an account whose data could not be reached.
+  runNow: (userId: string) => Promise<boolean>;
 }
 
 const initialSummary: SyncSummary = {
@@ -27,18 +29,20 @@ export const useSyncStore = create<SyncState>((set) => ({
     set({ processing: true, error: null });
 
     try {
-      const summary = await syncEngine.run(userId);
+      const result = await syncEngine.run(userId);
+      const { pulled, ...summary } = result;
       set({
-        ...(summary ?? initialSummary),
+        ...summary,
         processing: false,
         error: null
       });
+      return pulled;
     } catch (error) {
       set({
         processing: false,
         error: error instanceof Error ? error.message : "Sync failed."
       });
+      return false;
     }
   }
 }));
-
