@@ -1,20 +1,10 @@
-import {
-  collection,
-  doc,
-  getDocs,
-  orderBy,
-  query,
-  setDoc,
-  where
-} from "firebase/firestore";
+import { collection, doc, getDocs, setDoc } from "firebase/firestore";
 import { appDb, getOptionalTable } from "@/db/dexie";
 import { syncRepository } from "@/db/repositories/sync-repository";
 import { firestore } from "@/lib/firebase-client";
 import {
   SYNC_ENTITY_NAMES,
-  clearCheckpoints,
   clearLegacyCheckpoints,
-  getCheckpoint,
   setCheckpoint
 } from "@/services/sync-checkpoints";
 import { shouldApplyRemoteRecord, toIsoTimestamp } from "@/services/sync-merge";
@@ -31,6 +21,13 @@ import type {
   TransactionRecord
 } from "@/types";
 import { nowIso } from "@/utils/date-utils";
+
+interface PullOutcome {
+  entityName: SyncEntityName;
+  fetched: number;
+  applied: number;
+  skipped: number;
+}
 
 type SyncableRecord =
   | Account
@@ -96,9 +93,18 @@ function toRemoteDoc(record: SyncableRecord) {
   return rest;
 }
 
-function fromRemoteDoc(entityName: SyncEntityName, data: Record<string, unknown>): SyncableRecord {
+function fromRemoteDoc(
+  entityName: SyncEntityName,
+  userId: string,
+  data: Record<string, unknown>
+): SyncableRecord {
   const base = {
     ...data,
+    // Ownership comes from the path the document was read from, never from a
+    // field. Everything under users/<uid> is that user's by definition, and a
+    // record written without the field — or with a stale one — must not end up
+    // invisible to the account it belongs to, since reads are scoped by owner.
+    userId,
     updatedAt: toIsoTimestamp(data.updatedAt),
     remoteId: String(data.id),
     syncStatus: "synced" as const,
@@ -182,72 +188,59 @@ async function pushOperation(operation: SyncOperationRecord, userId: string) {
 }
 
 /**
- * How many rows of this entity already belong to the signed-in user. A cursor is
- * only meaningful next to the rows it was earned against: when this device holds
- * none of the user's data (fresh browser, evicted IndexedDB, "Reset app data", or
- * a browser previously used by someone else), an inherited cursor would skip
- * their entire remote history and leave the app showing an empty ledger. In that
- * state the cursor is ignored and the pull starts from the beginning.
+ * Pulls every record the account has for one entity.
+ *
+ * The pull deliberately fetches the whole collection instead of asking Firestore
+ * for "everything newer than the last cursor". A `where`/`orderBy` on `updatedAt`
+ * silently drops any document that lacks the field or stores it as a different
+ * type (a Timestamp rather than an ISO string, say) — those documents are plainly
+ * visible in the Firestore console yet unreachable by the query, which is exactly
+ * how a tester's transactions went missing. Which records to keep is decided
+ * locally instead, where a missing or oddly typed timestamp can be handled
+ * rather than silently excluded.
+ *
+ * Ledgers are small (a beta tester's is hundreds of documents), so the cost of
+ * reading them in full is worth never hiding a record again.
  */
-async function countOwnedRecords(entityName: SyncEntityName, userId: string) {
-  const table = getSyncTable(entityName) as unknown as {
-    where: (index: string) => { equals: (value: string) => { count: () => Promise<number> } };
-  };
-
-  try {
-    return await table.where("userId").equals(userId).count();
-  } catch {
-    // A missing index must never block the pull — assume nothing is owned, which
-    // only costs one full pull.
-    return 0;
-  }
-}
-
-async function resolveCheckpoint(entityName: SyncEntityName, userId: string) {
-  const checkpoint = getCheckpoint(entityName, userId);
-  if (!checkpoint) {
-    return null;
-  }
-
-  const owned = await countOwnedRecords(entityName, userId);
-  if (owned > 0) {
-    return checkpoint;
-  }
-
-  clearCheckpoints(userId);
-  return null;
-}
-
-async function pullTable(entityName: SyncEntityName, userId: string) {
+async function pullTable(entityName: SyncEntityName, userId: string): Promise<PullOutcome> {
   const db = assertFirestore();
-  const checkpoint = await resolveCheckpoint(entityName, userId);
-  const collectionRef = collection(db, "users", userId, entityName);
-  const constraints = checkpoint
-    ? [where("updatedAt", ">", checkpoint), orderBy("updatedAt", "asc")]
-    : [orderBy("updatedAt", "asc")];
-
-  const snapshot = await getDocs(query(collectionRef, ...constraints));
+  const snapshot = await getDocs(collection(db, "users", userId, entityName));
   const table = getSyncTable(entityName);
 
+  let applied = 0;
+  let skipped = 0;
   let latestUpdatedAt: string | null = null;
 
   for (const document of snapshot.docs) {
     const data = document.data() as Record<string, unknown>;
-    const remoteRecord = fromRemoteDoc(entityName, data);
+
+    // A document whose id lives only on the document itself, not in its fields,
+    // still has to land under a primary key locally.
+    if (typeof data.id !== "string" || !data.id) {
+      data.id = document.id;
+    }
+
+    const remoteRecord = fromRemoteDoc(entityName, userId, data);
     const localRecord = (await table.get(remoteRecord.id)) as SyncableRecord | undefined;
 
     if (shouldApplyRemoteRecord(remoteRecord.updatedAt, localRecord?.updatedAt)) {
       await table.put(remoteRecord as never);
+      applied += 1;
+    } else {
+      skipped += 1;
     }
 
-    latestUpdatedAt = remoteRecord.updatedAt;
+    if (!latestUpdatedAt || remoteRecord.updatedAt > latestUpdatedAt) {
+      latestUpdatedAt = remoteRecord.updatedAt;
+    }
   }
 
   if (latestUpdatedAt) {
+    // Kept for support and diagnostics only — nothing filters on it any more.
     setCheckpoint(entityName, userId, latestUpdatedAt);
   }
 
-  return snapshot.size;
+  return { entityName, fetched: snapshot.size, applied, skipped };
 }
 
 export const syncEngine = {
@@ -274,8 +267,10 @@ export const syncEngine = {
       }
     }
 
-    await Promise.all(SYNC_ENTITY_NAMES.map((entityName) => pullTable(entityName, userId)));
+    const outcomes = await Promise.all(
+      SYNC_ENTITY_NAMES.map((entityName) => pullTable(entityName, userId))
+    );
 
-    return { ...(await syncRepository.summarize()), pulled: true };
+    return { ...(await syncRepository.summarize()), pulled: true, outcomes };
   }
 };

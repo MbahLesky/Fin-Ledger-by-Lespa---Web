@@ -27,4 +27,12 @@ export interface SyncSummary {
 // must not act as though it reflects the account's real state.
 export interface SyncRunResult extends SyncSummary {
   pulled: boolean;
+  // What each entity's pull saw, for the diagnostics panel: how many documents
+  // the account holds remotely, and how many of them changed anything locally.
+  outcomes?: {
+    entityName: SyncEntityName;
+    fetched: number;
+    applied: number;
+    skipped: number;
+  }[];
 }

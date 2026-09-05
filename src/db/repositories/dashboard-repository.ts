@@ -1,4 +1,5 @@
 import { isSameDay, parseISO } from "date-fns";
+import { belongsToActiveUser } from "@/db/active-user";
 import { getOptionalTable } from "@/db/dexie";
 import { accountsRepository } from "@/db/repositories/accounts-repository";
 import { transactionsRepository } from "@/db/repositories/transactions-repository";
@@ -19,7 +20,7 @@ export const dashboardRepository = {
     const [accountSummaries, recentTransactions, transfers] = await Promise.all([
       accountsRepository.listWithBalances(),
       transactionsRepository.listWithRelations(),
-      transfersTable ? transfersTable.toArray() : Promise.resolve([])
+      transfersTable ? transfersTable.filter(belongsToActiveUser).toArray() : Promise.resolve([])
     ]);
     const activeTransfers = transfers.filter((transfer) => !transfer.deletedAt);
 

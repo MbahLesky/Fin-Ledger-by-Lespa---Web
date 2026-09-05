@@ -4,7 +4,9 @@ import { useSyncStore } from "@/store/sync-store";
 import { initializeAnalytics } from "@/services/firebase-analytics-service";
 import { firebaseAuthService } from "@/services/firebase-auth-service";
 import { isFirebaseConfigured } from "@/lib/env";
+import { useAppUpdate } from "@/hooks/use-app-update";
 import { useLanguageSync } from "@/hooks/use-language-sync";
+import { useUnsyncedExitWarning } from "@/hooks/use-unsynced-exit-warning";
 
 export function AppBootstrap() {
   const bootstrap = useAuthStore((state) => state.bootstrap);
@@ -14,6 +16,8 @@ export function AppBootstrap() {
   const refreshSync = useSyncStore((state) => state.refresh);
 
   useLanguageSync();
+  useAppUpdate();
+  useUnsyncedExitWarning();
 
   useEffect(() => {
     void bootstrap();

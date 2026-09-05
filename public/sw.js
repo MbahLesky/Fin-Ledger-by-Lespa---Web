@@ -1,5 +1,5 @@
 // Bumped whenever APP_SHELL changes, so the activate handler evicts the old cache.
-const CACHE_NAME = "monilog-shell-v2";
+const CACHE_NAME = "monilog-shell-v3";
 const APP_SHELL = [
   "/",
   "/index.html",
@@ -15,7 +15,15 @@ self.addEventListener("install", (event) => {
     })
   );
 
-  self.skipWaiting();
+  // No skipWaiting: a new build must not replace the running one mid-entry. It
+  // waits until the open tab offers a reload and the person accepts, which is
+  // what sends the SKIP_WAITING message below.
+});
+
+self.addEventListener("message", (event) => {
+  if (event.data && event.data.type === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
 });
 
 self.addEventListener("activate", (event) => {

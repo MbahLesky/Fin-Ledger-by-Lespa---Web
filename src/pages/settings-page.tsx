@@ -14,6 +14,7 @@ import { categoriesRepository } from "@/db/repositories/categories-repository";
 import { settingsRepository } from "@/db/repositories/settings-repository";
 import { syncRepository } from "@/db/repositories/sync-repository";
 import { workspaceRepository } from "@/db/repositories/workspace-repository";
+import { SyncDiagnostics } from "@/features/settings/sync-diagnostics";
 import { jsonBackupService } from "@/services/json-backup-service";
 import { SUPPORTED_CURRENCIES } from "@/lib/constants";
 import { ROUTES } from "@/routes/route-constants";
@@ -461,6 +462,8 @@ export function SettingsPage() {
           </Button>
         </CardContent>
       </Card>
+
+      <SyncDiagnostics />
 
       <Card>
         <CardHeader>

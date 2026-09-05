@@ -1,20 +1,8 @@
 import { useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { ArrowRightLeft, Filter, Pencil, Plus, Search, Trash2 } from "lucide-react";
+import { ArrowRightLeft, Filter, Plus, Search } from "lucide-react";
 import { EmptyState } from "@/components/data-display/empty-state";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger
-} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { PageShell } from "@/components/layout/page-shell";
@@ -26,6 +14,13 @@ import { historyRepository } from "@/db/repositories/history-repository";
 import { transfersRepository } from "@/db/repositories/transfers-repository";
 import { settingsRepository } from "@/db/repositories/settings-repository";
 import { transactionsRepository } from "@/db/repositories/transactions-repository";
+import {
+  EntryTypeBadge,
+  HistoryEntryActions,
+  HistoryEntryCard,
+  amountToneClass,
+  formatSignedAmount
+} from "@/features/transactions/history-entry-parts";
 import { TransactionForm } from "@/features/transactions/transaction-form";
 import { TransferForm } from "@/features/transfers/transfer-form";
 import { ROUTES } from "@/routes/route-constants";
@@ -61,7 +56,7 @@ export function TransactionsPage() {
       title="Transactions"
       description="Search, filter, edit, and remove transaction history while the ledger remains local-first."
       action={
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button variant="outline" onClick={() => navigate(ROUTES.transfer)}>
             <ArrowRightLeft className="size-4" />
             Transfer
@@ -166,96 +161,83 @@ export function TransactionsPage() {
           onAction={() => navigate(ROUTES.addTransaction)}
         />
       ) : (
-        <div className="rounded-xl border border-border/70 bg-card">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Date</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Category / Path</TableHead>
-                <TableHead>Account scope</TableHead>
-                <TableHead>Note</TableHead>
-                <TableHead>Amount</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {historyItems?.map((item) => (
-                <TableRow key={`${item.kind}-${item.id}`}>
-                  <TableCell className="font-medium">{item.occurredAt.slice(0, 10)}</TableCell>
-                  <TableCell>
-                    {item.entryType === "income" ? (
-                      <Badge variant="success">Income</Badge>
-                    ) : item.entryType === "expense" ? (
-                      <Badge variant="accent">Expense</Badge>
-                    ) : (
-                      <Badge variant="default" className="gap-1">
-                        <ArrowRightLeft className="size-3" />
-                        Transfer
-                      </Badge>
-                    )}
-                  </TableCell>
-                  <TableCell>{item.categoryLabel ?? "-"}</TableCell>
-                  <TableCell>{item.accountLabel}</TableCell>
-                  <TableCell className="max-w-xs truncate text-muted-foreground">
-                    {item.description || "No note"}
-                  </TableCell>
-                  <TableCell className={item.entryType === "income" ? "text-secondary" : item.entryType === "expense" ? "text-accent" : ""}>
-                    {item.entryType === "income" ? "+" : item.entryType === "expense" ? "-" : ""}
-                    {formatCurrency(item.amount, item.currencyCode || selectedCurrencyCode)}
-                    {item.kind === "transfer" && item.fee > 0 ? (
-                      <p className="text-xs text-muted-foreground">
-                        Fee {formatCurrency(item.fee, item.currencyCode || selectedCurrencyCode)}
-                      </p>
-                    ) : null}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() =>
-                          item.kind === "transaction" ? setEditingId(item.id) : setEditingTransferId(item.id)
-                        }
-                      >
-                        <Pencil className="size-4" />
-                        Edit
-                      </Button>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="ghost" size="sm" className="text-accent hover:text-accent">
-                            <Trash2 className="size-4" />
-                            Delete
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Delete transaction?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              This uses a soft delete so the change can sync safely later. The row will disappear from your active history immediately.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={() =>
-                                void (item.kind === "transaction"
-                                  ? transactionsRepository.softDelete(item.id)
-                                  : transfersRepository.softDelete(item.id))
-                              }
-                            >
-                              Delete
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </div>
-                  </TableCell>
+        <>
+          {/* Phones get cards: a seven-column table can only be read here by
+              scrolling sideways, which hides the amount — the one column that
+              matters most. */}
+          <div className="grid gap-3 md:hidden">
+            {historyItems?.map((item) => (
+              <HistoryEntryCard
+                key={`${item.kind}-${item.id}`}
+                item={item}
+                fallbackCurrencyCode={selectedCurrencyCode}
+                onEdit={() =>
+                  item.kind === "transaction" ? setEditingId(item.id) : setEditingTransferId(item.id)
+                }
+                onDelete={() =>
+                  void (item.kind === "transaction"
+                    ? transactionsRepository.softDelete(item.id)
+                    : transfersRepository.softDelete(item.id))
+                }
+              />
+            ))}
+          </div>
+
+          <div className="hidden overflow-x-auto rounded-xl border border-border/70 bg-card md:block">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Category / Path</TableHead>
+                  <TableHead>Account scope</TableHead>
+                  <TableHead>Note</TableHead>
+                  <TableHead>Amount</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+              </TableHeader>
+              <TableBody>
+                {historyItems?.map((item) => (
+                  <TableRow key={`${item.kind}-${item.id}`}>
+                    <TableCell className="font-medium">{item.occurredAt.slice(0, 10)}</TableCell>
+                    <TableCell>
+                      <EntryTypeBadge entryType={item.entryType} />
+                    </TableCell>
+                    <TableCell>{item.categoryLabel ?? "-"}</TableCell>
+                    <TableCell>{item.accountLabel}</TableCell>
+                    <TableCell className="max-w-xs truncate text-muted-foreground">
+                      {item.description || "No note"}
+                    </TableCell>
+                    <TableCell className={amountToneClass(item.entryType)}>
+                      {formatSignedAmount(item, selectedCurrencyCode)}
+                      {item.kind === "transfer" && item.fee > 0 ? (
+                        <p className="text-xs text-muted-foreground">
+                          Fee {formatCurrency(item.fee, item.currencyCode || selectedCurrencyCode)}
+                        </p>
+                      ) : null}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <HistoryEntryActions
+                        item={item}
+                        className="justify-end"
+                        onEdit={() =>
+                          item.kind === "transaction"
+                            ? setEditingId(item.id)
+                            : setEditingTransferId(item.id)
+                        }
+                        onDelete={() =>
+                          void (item.kind === "transaction"
+                            ? transactionsRepository.softDelete(item.id)
+                            : transfersRepository.softDelete(item.id))
+                        }
+                      />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </>
       )}
 
       <Dialog open={Boolean(editingTransaction)} onOpenChange={(open) => !open && setEditingId(null)}>

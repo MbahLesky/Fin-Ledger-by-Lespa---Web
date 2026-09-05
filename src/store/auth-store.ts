@@ -11,6 +11,7 @@ import { firebaseAuthService } from "@/services/firebase-auth-service";
 import { useSyncStore } from "@/store/sync-store";
 import type { Profile, TesterRegistrationResult } from "@/types";
 import { decideAccountSwitch } from "@/db/account-switch";
+import { setActiveUserId } from "@/db/active-user";
 import { syncRepository } from "@/db/repositories/sync-repository";
 import { workspaceRepository } from "@/db/repositories/workspace-repository";
 import { nowIso } from "@/utils/date-utils";
@@ -183,6 +184,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   hydrateFromUser: async (user) => {
     if (!user) {
+      setActiveUserId(null);
       set({
         status: "signed_out",
         user: null,
@@ -190,6 +192,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       });
       return;
     }
+
+    // Set before anything reads the database: every repository read is scoped to
+    // this uid, so another account's leftover rows cannot reach the screen even
+    // if clearing them fails or is interrupted.
+    setActiveUserId(user.uid);
 
     // Only the opaque uid — never email or display name — so analytics holds no
     // directly identifying data.
@@ -358,6 +365,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     if (isFirebaseConfigured) {
       await firebaseAuthService.signOut();
     }
+
+    setActiveUserId(null);
 
     // Leaving the ledger behind is what let the next person to sign in on this
     // browser see it. It is only safe to clear once the cloud has everything:
