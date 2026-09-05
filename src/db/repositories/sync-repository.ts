@@ -93,6 +93,15 @@ export const syncRepository = {
     };
   },
 
+  // Everything still owed to the cloud: queued, retrying, and mid-flight. Used to
+  // warn before an action that would leave those changes stranded on this device.
+  async countUnsynced() {
+    return appDb.syncOperations
+      .where("status")
+      .anyOf(["pending", "failed", "processing"])
+      .count();
+  },
+
   async clearAll() {
     await appDb.syncOperations.clear();
   }

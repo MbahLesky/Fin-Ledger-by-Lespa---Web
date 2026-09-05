@@ -1,4 +1,5 @@
 import { isWithinInterval, parseISO } from "date-fns";
+import { belongsToActiveUser } from "@/db/active-user";
 import { appDb, getOptionalTable } from "@/db/dexie";
 import { accountsRepository } from "@/db/repositories/accounts-repository";
 import { settingsRepository } from "@/db/repositories/settings-repository";
@@ -112,14 +113,16 @@ export const transfersRepository = {
       return [];
     }
 
-    const items = await transfersTable.filter((item) => !item.deletedAt).toArray();
+    const items = await transfersTable
+      .filter((item) => !item.deletedAt && belongsToActiveUser(item))
+      .toArray();
     return items.sort((left, right) => right.transferDate.localeCompare(left.transferDate));
   },
 
   async listWithRelations(filters: TransferFilters = defaultTransferFilters): Promise<TransferListItem[]> {
     const [transfers, accounts, settings] = await Promise.all([
       this.listActive(),
-      appDb.accounts.toArray(),
+      appDb.accounts.filter(belongsToActiveUser).toArray(),
       settingsRepository.getSettings()
     ]);
 
@@ -257,7 +260,7 @@ export const transfersRepository = {
       return;
     }
 
-    const records = await transfersTable.toArray();
+    const records = await transfersTable.filter((record) => !record.userId).toArray();
     await Promise.all(
       records.map((record) =>
         transfersTable.put({

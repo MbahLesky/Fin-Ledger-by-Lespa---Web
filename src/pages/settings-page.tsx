@@ -12,7 +12,9 @@ import { Switch } from "@/components/ui/switch";
 import { accountsRepository } from "@/db/repositories/accounts-repository";
 import { categoriesRepository } from "@/db/repositories/categories-repository";
 import { settingsRepository } from "@/db/repositories/settings-repository";
+import { syncRepository } from "@/db/repositories/sync-repository";
 import { workspaceRepository } from "@/db/repositories/workspace-repository";
+import { SyncDiagnostics } from "@/features/settings/sync-diagnostics";
 import { jsonBackupService } from "@/services/json-backup-service";
 import { SUPPORTED_CURRENCIES } from "@/lib/constants";
 import { ROUTES } from "@/routes/route-constants";
@@ -25,7 +27,9 @@ export function SettingsPage() {
   const navigate = useNavigate();
   const profile = useAuthStore((state) => state.profile);
   const signOut = useAuthStore((state) => state.signOut);
+  const syncWorkspace = useAuthStore((state) => state.syncWorkspace);
   const userId = useAuthStore((state) => state.user?.uid ?? null);
+  const unsyncedCount = useLiveQuery(() => syncRepository.countUnsynced(), [], 0);
   const settings = useLiveQuery(() => settingsRepository.getSettings(), []);
   const reminderPreferences = useLiveQuery(() => settingsRepository.getNotificationPreferences(), []);
   const accounts = useLiveQuery(() => accountsRepository.listActive(), []);
@@ -34,6 +38,7 @@ export function SettingsPage() {
   const startTour = useUiStore((state) => state.startTour);
   const restoreInputRef = useRef<HTMLInputElement>(null);
 
+  const [signingOut, setSigningOut] = useState(false);
   const [accountBalances, setAccountBalances] = useState<Record<string, string>>({});
   const [newAccountName, setNewAccountName] = useState("");
   const [newAccountType, setNewAccountType] = useState<AccountType>("other");
@@ -147,6 +152,34 @@ export function SettingsPage() {
     navigate(ROUTES.login);
   }
 
+  // Logging out clears this browser so the next person to sign in cannot see the
+  // ledger — which would strand anything the cloud has not received yet. So the
+  // upload is offered first, and only a successful one is followed by the logout.
+  async function handleSyncAndSignOut() {
+    if (!userId) {
+      await handleSignOut();
+      return;
+    }
+
+    setSigningOut(true);
+    try {
+      await syncWorkspace(userId);
+      const remaining = await syncRepository.countUnsynced();
+
+      if (remaining > 0) {
+        toast.error("Your changes could not be uploaded.", {
+          description: "Check your connection and try again — you are still logged in."
+        });
+        return;
+      }
+
+      toast.success("Changes synced.");
+      await handleSignOut();
+    } finally {
+      setSigningOut(false);
+    }
+  }
+
   return (
     <PageShell
       title="Settings"
@@ -169,9 +202,51 @@ export function SettingsPage() {
               <p className="text-sm text-muted-foreground">Email</p>
               <p className="mt-1 font-semibold">{profile?.email ?? "Unavailable"}</p>
             </div>
-            <Button variant="outline" onClick={() => void handleSignOut()}>
-              Log out
-            </Button>
+            {unsyncedCount > 0 ? (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="outline">Log out</Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>
+                      {unsyncedCount === 1
+                        ? "1 change hasn't been synced yet"
+                        : `${unsyncedCount} changes haven't been synced yet`}
+                    </AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Logging out clears this browser so nobody else who signs in here can see your
+                      ledger. Sync first and nothing is lost — log out anyway and these changes stay
+                      on this device until you sign back in.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel disabled={signingOut}>Cancel</AlertDialogCancel>
+                    <Button
+                      variant="outline"
+                      disabled={signingOut}
+                      onClick={() => void handleSignOut()}
+                    >
+                      Log out anyway
+                    </Button>
+                    <AlertDialogAction
+                      disabled={signingOut}
+                      onClick={(event) => {
+                        // Kept open so the upload's outcome can be reported here.
+                        event.preventDefault();
+                        void handleSyncAndSignOut();
+                      }}
+                    >
+                      {signingOut ? "Syncing..." : "Sync and log out"}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            ) : (
+              <Button variant="outline" onClick={() => void handleSignOut()}>
+                Log out
+              </Button>
+            )}
           </CardContent>
         </Card>
 
@@ -387,6 +462,8 @@ export function SettingsPage() {
           </Button>
         </CardContent>
       </Card>
+
+      <SyncDiagnostics />
 
       <Card>
         <CardHeader>

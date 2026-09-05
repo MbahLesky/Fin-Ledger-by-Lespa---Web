@@ -1,3 +1,4 @@
+import { belongsToActiveUser } from "@/db/active-user";
 import { appDb, getOptionalTable } from "@/db/dexie";
 import { createDefaultAccounts } from "@/db/seed/default-records";
 import type { Account, AccountBalanceSnapshot, AccountType, TransactionRecord, TransferRecord } from "@/types";
@@ -54,15 +55,17 @@ function calculateBalanceForAccount(
 export const accountsRepository = {
   async listActive() {
     await ensureDefaultAccounts();
-    return appDb.accounts.filter((account) => !account.deletedAt).sortBy("displayOrder");
+    return appDb.accounts
+      .filter((account) => !account.deletedAt && belongsToActiveUser(account))
+      .sortBy("displayOrder");
   },
 
   async listWithBalances(): Promise<AccountBalanceSnapshot[]> {
     const transfersTable = getOptionalTable<TransferRecord>("transfers");
     const [accounts, transactions, transfers] = await Promise.all([
       this.listActive(),
-      appDb.transactions.toArray(),
-      transfersTable ? transfersTable.toArray() : Promise.resolve([])
+      appDb.transactions.filter(belongsToActiveUser).toArray(),
+      transfersTable ? transfersTable.filter(belongsToActiveUser).toArray() : Promise.resolve([])
     ]);
 
     return accounts.map((account) => ({
@@ -73,7 +76,8 @@ export const accountsRepository = {
 
   async getById(id: string) {
     await ensureDefaultAccounts();
-    return appDb.accounts.get(id);
+    const account = await appDb.accounts.get(id);
+    return account && belongsToActiveUser(account) ? account : undefined;
   },
 
   async createAccount(input: {
@@ -156,8 +160,12 @@ export const accountsRepository = {
     await syncRepository.enqueue("accounts", next.id, "delete", JSON.stringify(next));
   },
 
+  // Claims only rows nobody owns yet — the seeded placeholders. Re-stamping rows
+  // that already carry a uid would bump `updatedAt` and re-queue the whole ledger
+  // on every sign-in, and rows belonging to another account on this browser must
+  // never be filed under this user.
   async stampOwnership(userId: string) {
-    const records = await appDb.accounts.toArray();
+    const records = await appDb.accounts.filter((record) => !record.userId).toArray();
     await Promise.all(
       records.map((record) =>
         this.updateAccount(record.id, {

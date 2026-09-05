@@ -1,3 +1,4 @@
+import { belongsToActiveUser } from "@/db/active-user";
 import { appDb } from "@/db/dexie";
 import { createDefaultCategories } from "@/db/seed/default-records";
 import type { Category, TransactionType } from "@/types";
@@ -15,7 +16,9 @@ async function ensureDefaultCategories() {
 export const categoriesRepository = {
   async listActive() {
     await ensureDefaultCategories();
-    const categories = await appDb.categories.filter((item) => !item.deletedAt).toArray();
+    const categories = await appDb.categories
+      .filter((item) => !item.deletedAt && belongsToActiveUser(item))
+      .toArray();
     return categories.sort((left, right) => left.name.localeCompare(right.name));
   },
 
@@ -26,7 +29,8 @@ export const categoriesRepository = {
 
   async getById(id: string) {
     await ensureDefaultCategories();
-    return appDb.categories.get(id);
+    const category = await appDb.categories.get(id);
+    return category && belongsToActiveUser(category) ? category : undefined;
   },
 
   async findMatch(name: string, type: TransactionType) {
@@ -112,8 +116,9 @@ export const categoriesRepository = {
     await syncRepository.enqueue("categories", next.id, "delete", JSON.stringify(next));
   },
 
+  // Unowned (seeded) rows only — see accountsRepository.stampOwnership.
   async stampOwnership(userId: string) {
-    const records = await appDb.categories.toArray();
+    const records = await appDb.categories.filter((record) => !record.userId).toArray();
     await Promise.all(
       records.map((record) =>
         this.updateCategory(record.id, {

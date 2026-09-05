@@ -9,13 +9,15 @@ import {
 import type { Account, AppSettings, Category, NotificationPreference } from "@/types";
 import { nowIso } from "@/utils/date-utils";
 
-// A never-synced placeholder row must always lose a last-write-wins comparison
+// Every seeded placeholder row must always lose a last-write-wins comparison
 // against a genuine remote record — otherwise a device syncing for the first
 // time (or after local storage was reset/reassigned to another account) seeds
 // `updatedAt` to "now", which outranks the real, older remote history and blocks
-// it from ever being pulled down (e.g. onboarding wrongly re-triggering for a
-// user who already completed it elsewhere).
-const NEVER_SYNCED = new Date(0).toISOString();
+// it from ever being pulled down. The default accounts and categories share
+// fixed ids with the remote (and Flutter) records, so a "now" stamp on them hid
+// a returning user's real opening balances behind zeroed placeholders; settings
+// carrying one re-triggered onboarding for a user who had already finished it.
+export const NEVER_SYNCED = new Date(0).toISOString();
 
 export function createDefaultSettings(): AppSettings {
   const timestamp = nowIso();
@@ -71,7 +73,7 @@ export function createDefaultAccounts(): Account[] {
     syncError: null,
     lastSyncedAt: null,
     createdAt: timestamp,
-    updatedAt: timestamp,
+    updatedAt: NEVER_SYNCED,
     deletedAt: null
   }));
 }
@@ -92,7 +94,7 @@ export function createDefaultCategories(): Category[] {
     syncError: null,
     lastSyncedAt: null,
     createdAt: timestamp,
-    updatedAt: timestamp,
+    updatedAt: NEVER_SYNCED,
     deletedAt: null
   }));
 }

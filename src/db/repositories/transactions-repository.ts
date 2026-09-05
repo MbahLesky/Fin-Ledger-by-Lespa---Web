@@ -1,4 +1,5 @@
 import { isWithinInterval, parseISO } from "date-fns";
+import { belongsToActiveUser } from "@/db/active-user";
 import { appDb } from "@/db/dexie";
 import { settingsRepository } from "@/db/repositories/settings-repository";
 import type { TransactionFilters, TransactionListItem, TransactionRecord } from "@/types";
@@ -32,15 +33,17 @@ export const defaultTransactionFilters: TransactionFilters = {
 
 export const transactionsRepository = {
   async listActive() {
-    const items = await appDb.transactions.filter((item) => !item.deletedAt).toArray();
+    const items = await appDb.transactions
+      .filter((item) => !item.deletedAt && belongsToActiveUser(item))
+      .toArray();
     return items.sort((left, right) => right.transactionDate.localeCompare(left.transactionDate));
   },
 
   async listWithRelations(filters: TransactionFilters = defaultTransactionFilters): Promise<TransactionListItem[]> {
     const [transactions, accounts, categories, settings] = await Promise.all([
       this.listActive(),
-      appDb.accounts.toArray(),
-      appDb.categories.toArray(),
+      appDb.accounts.filter(belongsToActiveUser).toArray(),
+      appDb.categories.filter(belongsToActiveUser).toArray(),
       settingsRepository.getSettings()
     ]);
 
@@ -83,7 +86,8 @@ export const transactionsRepository = {
   },
 
   async getById(id: string) {
-    return appDb.transactions.get(id);
+    const transaction = await appDb.transactions.get(id);
+    return transaction && belongsToActiveUser(transaction) ? transaction : undefined;
   },
 
   async createTransaction(input: {
@@ -184,8 +188,9 @@ export const transactionsRepository = {
     );
   },
 
+  // Unowned rows only — see accountsRepository.stampOwnership.
   async stampOwnership(userId: string) {
-    const records = await appDb.transactions.toArray();
+    const records = await appDb.transactions.filter((record) => !record.userId).toArray();
     await Promise.all(
       records.map((record) =>
         this.updateTransaction(record.id, {

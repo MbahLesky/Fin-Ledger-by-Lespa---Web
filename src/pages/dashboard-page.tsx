@@ -6,6 +6,7 @@ import {
   CreditCard,
   Plus,
   ReceiptText,
+  RefreshCw,
   TrendingDown,
   TrendingUp
 } from "lucide-react";
@@ -40,10 +41,25 @@ export function DashboardPage() {
       title="Dashboard"
       description="See your current balance, quick totals, accounts, and the latest activity without waiting on a remote round trip."
       action={
-        <Button onClick={() => navigate(ROUTES.addTransaction)}>
-          <Plus className="size-4" />
-          Add transaction
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={() => userId && void syncState.runNow(userId)}
+            disabled={!userId || !isOnline || syncState.processing}
+            isLoading={syncState.processing}
+          >
+            <RefreshCw className="size-4" />
+            {syncState.pending + syncState.failed > 0
+              ? `Sync ${syncState.pending + syncState.failed} change${
+                  syncState.pending + syncState.failed === 1 ? "" : "s"
+                }`
+              : "Sync now"}
+          </Button>
+          <Button onClick={() => navigate(ROUTES.addTransaction)}>
+            <Plus className="size-4" />
+            Add transaction
+          </Button>
+        </div>
       }
     >
       <SyncBanner

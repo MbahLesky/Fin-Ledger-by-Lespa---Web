@@ -4,16 +4,20 @@ import { useSyncStore } from "@/store/sync-store";
 import { initializeAnalytics } from "@/services/firebase-analytics-service";
 import { firebaseAuthService } from "@/services/firebase-auth-service";
 import { isFirebaseConfigured } from "@/lib/env";
+import { useAppUpdate } from "@/hooks/use-app-update";
 import { useLanguageSync } from "@/hooks/use-language-sync";
+import { useUnsyncedExitWarning } from "@/hooks/use-unsynced-exit-warning";
 
 export function AppBootstrap() {
   const bootstrap = useAuthStore((state) => state.bootstrap);
   const hydrateFromUser = useAuthStore((state) => state.hydrateFromUser);
   const userId = useAuthStore((state) => state.user?.uid);
-  const runNow = useSyncStore((state) => state.runNow);
+  const syncWorkspace = useAuthStore((state) => state.syncWorkspace);
   const refreshSync = useSyncStore((state) => state.refresh);
 
   useLanguageSync();
+  useAppUpdate();
+  useUnsyncedExitWarning();
 
   useEffect(() => {
     void bootstrap();
@@ -38,8 +42,11 @@ export function AppBootstrap() {
 
   useEffect(() => {
     function handleConnectivityChange() {
+      // Goes through the workspace sync rather than the raw engine so a session
+      // that started offline still claims ownership of its seeded rows (and
+      // settles its onboarding state) once the network returns.
       if (userId && navigator.onLine) {
-        void runNow(userId);
+        void syncWorkspace(userId);
         return;
       }
 
@@ -53,7 +60,7 @@ export function AppBootstrap() {
       window.removeEventListener("online", handleConnectivityChange);
       window.removeEventListener("offline", handleConnectivityChange);
     };
-  }, [refreshSync, runNow, userId]);
+  }, [refreshSync, syncWorkspace, userId]);
 
   return null;
 }
