@@ -10,10 +10,22 @@ import { identifyUser, trackEvent } from "@/services/firebase-analytics-service"
 import { firebaseAuthService } from "@/services/firebase-auth-service";
 import { useSyncStore } from "@/store/sync-store";
 import type { Profile, TesterRegistrationResult } from "@/types";
+import { decideAccountSwitch } from "@/db/account-switch";
+import { syncRepository } from "@/db/repositories/sync-repository";
 import { workspaceRepository } from "@/db/repositories/workspace-repository";
 import { nowIso } from "@/utils/date-utils";
 
 type AuthStatus = "checking" | "signed_out" | "signed_in";
+
+/**
+ * Raised when this browser still holds another account's workspace and that
+ * workspace has changes the cloud has never seen. Nothing of theirs is shown or
+ * uploaded until someone decides what happens to it.
+ */
+interface AccountSwitchPrompt {
+  previousUserId: string;
+  unsyncedCount: number;
+}
 
 interface AuthState {
   status: AuthStatus;
@@ -22,9 +34,11 @@ interface AuthState {
   profile: Profile | null;
   error: string | null;
   notice: string | null;
+  accountSwitch: AccountSwitchPrompt | null;
   bootstrap: () => Promise<void>;
   hydrateFromUser: (user: User | null) => Promise<void>;
   syncWorkspace: (userId: string) => Promise<boolean>;
+  discardPreviousWorkspace: () => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (
     fullName: string,
@@ -147,6 +161,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   profile: null,
   error: null,
   notice: null,
+  accountSwitch: null,
 
   bootstrap: async () => {
     await workspaceRepository.initialize();
@@ -217,6 +232,24 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       return false;
     }
 
+    // A browser is shared: whatever is on this device belongs to whoever signed in
+    // last. Their ledger must never be shown to, or uploaded for, the person
+    // signing in now — so it is cleared before the pull. When it still holds
+    // changes the cloud has never seen, clearing would destroy them, so the app
+    // stops and asks instead.
+    const localOwnerId = await workspaceRepository.getLocalOwnerId();
+    const unsyncedCount = await syncRepository.countUnsynced();
+    const decision = decideAccountSwitch({ localOwnerId, userId, unsyncedCount });
+
+    if (decision === "ask" && localOwnerId) {
+      set({ accountSwitch: { previousUserId: localOwnerId, unsyncedCount } });
+      return false;
+    }
+
+    if (decision === "clear-previous" && localOwnerId) {
+      await workspaceRepository.clearWorkspaceData(localOwnerId);
+    }
+
     await workspaceRepository.releaseStaleOwnership(userId);
 
     const pulled = await useSyncStore.getState().runNow(userId);
@@ -227,6 +260,25 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     await workspaceRepository.reconcileOnboardingState();
     await workspaceRepository.stampOwnership(userId);
     return true;
+  },
+
+  /**
+   * Throws away the previous account's unsynced workspace and continues signing
+   * the current user in. Only ever reached from the account-switch screen, where
+   * the person has been told exactly how many changes are being discarded.
+   */
+  discardPreviousWorkspace: async () => {
+    const { accountSwitch, user } = get();
+    if (!accountSwitch) {
+      return;
+    }
+
+    await workspaceRepository.clearWorkspaceData(accountSwitch.previousUserId);
+    set({ accountSwitch: null });
+
+    if (user) {
+      await get().syncWorkspace(user.uid);
+    }
   },
 
   signIn: async (email, password) => {
@@ -307,6 +359,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       await firebaseAuthService.signOut();
     }
 
+    // Leaving the ledger behind is what let the next person to sign in on this
+    // browser see it. It is only safe to clear once the cloud has everything:
+    // anything still queued stays, and is settled at the next sign-in.
+    const unsyncedCount = await syncRepository.countUnsynced();
+    if (unsyncedCount === 0) {
+      await workspaceRepository.clearWorkspaceData(get().user?.uid);
+    }
+
     trackEvent(ANALYTICS_EVENTS.signOut);
     identifyUser(null);
 
@@ -319,7 +379,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       user: null,
       profile: null,
       error: null,
-      notice: null
+      notice: null,
+      accountSwitch: null
     });
   },
 

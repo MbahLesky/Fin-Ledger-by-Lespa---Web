@@ -104,7 +104,48 @@ export const workspaceRepository = {
     return true;
   },
 
-  async resetAppData() {
+  /**
+   * Which account this browser's data belongs to, or null when nothing here has
+   * an owner yet (a first run, or a workspace that has only ever been seeded).
+   *
+   * Settings answer first because they are the one row that always exists; the
+   * ledger tables are a fallback for a workspace whose settings were reset.
+   */
+  async getLocalOwnerId(): Promise<string | null> {
+    const [settings, notificationPreferences] = await Promise.all([
+      settingsRepository.getSettings(),
+      settingsRepository.getNotificationPreferences()
+    ]);
+
+    if (settings.userId) {
+      return settings.userId;
+    }
+
+    if (notificationPreferences.userId) {
+      return notificationPreferences.userId;
+    }
+
+    const transfersTable = getOptionalTable<TransferRecord>("transfers");
+    const owners = await Promise.all([
+      appDb.transactions.filter((record) => Boolean(record.userId)).first(),
+      transfersTable
+        ? transfersTable.filter((record) => Boolean(record.userId)).first()
+        : Promise.resolve(undefined),
+      appDb.accounts.filter((record) => Boolean(record.userId)).first(),
+      appDb.categories.filter((record) => Boolean(record.userId)).first()
+    ]);
+
+    return owners.find((record) => record?.userId)?.userId ?? null;
+  },
+
+  /**
+   * Empties this browser's workspace and re-seeds it, leaving nothing of the
+   * previous account behind — its rows, its queued changes, and its pull cursors.
+   *
+   * Anything not yet pushed is destroyed with it, so only call this once the
+   * queue is empty or the person has been told and chosen to discard it.
+   */
+  async clearWorkspaceData(ownerId?: string) {
     const transfersTable = getOptionalTable("transfers");
     await Promise.all([
       appDb.accounts.clear(),
@@ -121,8 +162,12 @@ export const workspaceRepository = {
     // The pull cursors describe rows that no longer exist. Left in place they
     // would tell the next pull that everything before "now" is already present,
     // and the account's remote history would never come back down.
-    clearCheckpoints();
+    clearCheckpoints(ownerId);
 
     await this.initialize();
+  },
+
+  async resetAppData() {
+    await this.clearWorkspaceData();
   }
 };
