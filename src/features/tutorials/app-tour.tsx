@@ -81,7 +81,7 @@ export function AppTour() {
       callback={handleCallback}
       styles={{
         options: {
-          primaryColor: "#173B7A",
+          primaryColor: "#08D2B5",
           zIndex: 60
         }
       }}

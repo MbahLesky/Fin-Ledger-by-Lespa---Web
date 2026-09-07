@@ -21,7 +21,7 @@ import { formatCurrency } from "@/utils/formatting";
 import { LineChart as LineChartIcon } from "lucide-react";
 import { analyticsService } from "@/services/analytics-service";
 
-const CHART_COLORS = ["#173B7A", "#0F8C83", "#E1644C", "#4B6FAF", "#57B9B1", "#F39A87"];
+const CHART_COLORS = ["#08D2B5", "#08867F", "#E1644C", "#173B7A", "#57B9B1", "#F39A87"];
 
 export function AnalyticsPage() {
   const transactions = useLiveQuery(() => transactionsRepository.listWithRelations(), []);
@@ -93,8 +93,8 @@ export function AnalyticsPage() {
               <AreaChart data={analytics?.monthlyTrend ?? []}>
                 <defs>
                   <linearGradient id="incomeFill" x1="0" x2="0" y1="0" y2="1">
-                    <stop offset="5%" stopColor="#0F8C83" stopOpacity={0.28} />
-                    <stop offset="95%" stopColor="#0F8C83" stopOpacity={0.03} />
+                    <stop offset="5%" stopColor="#08867F" stopOpacity={0.28} />
+                    <stop offset="95%" stopColor="#08867F" stopOpacity={0.03} />
                   </linearGradient>
                   <linearGradient id="expenseFill" x1="0" x2="0" y1="0" y2="1">
                     <stop offset="5%" stopColor="#E1644C" stopOpacity={0.28} />
@@ -105,7 +105,7 @@ export function AnalyticsPage() {
                 <XAxis dataKey="label" tickLine={false} axisLine={false} />
                 <YAxis tickFormatter={(value) => `${value}`} tickLine={false} axisLine={false} />
                 <Tooltip formatter={(value: number) => formatCurrency(value, selectedCurrencyCode)} />
-                <Area type="monotone" dataKey="income" stroke="#0F8C83" fill="url(#incomeFill)" strokeWidth={2} />
+                <Area type="monotone" dataKey="income" stroke="#08867F" fill="url(#incomeFill)" strokeWidth={2} />
                 <Area type="monotone" dataKey="expense" stroke="#E1644C" fill="url(#expenseFill)" strokeWidth={2} />
               </AreaChart>
             </ResponsiveContainer>

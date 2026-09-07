@@ -54,23 +54,33 @@ Monilog is a simple personal finance tracker, not a full accounting platform. Th
 
 ## Color System
 
-The app already has an implementation baseline in `lib/core/theme/app_theme.dart`. That palette should remain the source of truth for now.
+Teal leads. It is the identity color on the marketing site, in both apps, and in
+the WhatsApp guide. Deep blue is kept for depth rather than as the anchor color.
 
 | Token | Hex | Role | Usage |
 | --- | --- | --- | --- |
-| Primary | `#173B7A` | trust, structure, navigation | primary CTA, app identity, headers, selected states |
-| Secondary | `#0F8C83` | progress, stability, positive movement | income, success, supporting highlights |
-| Accent | `#E1644C` | urgency, emphasis, spending attention | expense highlights, alerts, important contrast points |
+| Primary | `#08D2B5` | brand teal | identity, navigation, primary CTA, selected states, fills |
+| Secondary | `#08867F` | deep teal | income, positive movement, and teal wherever it must read as text on a light surface |
+| Accent | `#E1644C` | coral | expense highlights, alerts, destructive actions |
+| Deep Blue | `#173B7A` | depth | shadows, gradient anchors, dark structure |
 | Light Background | `#F3F6FB` | calm canvas | default app background in light mode |
 | Dark Background | `#08111F` | low-glare canvas | default app background in dark mode |
 | Dark Surface | `#101C2F` | elevated dark surface | cards, sheets, and panels in dark mode |
 
 ### Color Intent
 
-- blue is the anchor color and should communicate trust, control, and clarity
-- teal is the optimistic color and should be used for positive financial movement and supportive actions
+- teal is the anchor color and carries the brand: navigation, the main action, and the sense that the product is quick and calm
+- the deep teal is the same color where contrast requires it — `#08D2B5` on white is too light to read as text, so text, links and income figures use `#08867F` while fills, highlights and dark surfaces use the brand teal
 - coral is the alert color and should be used carefully for spending, warnings, and high-attention details
+- blue no longer leads, but has not been retired: it gives depth to shadows and gradients, where a saturated teal would shout
 - large surfaces should stay soft and restrained so transaction data remains the focus
+
+### Contrast
+
+Anything rendered *in* the brand teal on a light background must use the deep
+teal instead. Filled controls are fine either way — a teal fill takes dark ink,
+which is why `--primary-foreground` in the web app and Material's derived
+`onPrimary` in the Flutter app are both dark rather than white.
 
 ### Semantic Color Rules
 
@@ -242,7 +252,16 @@ Avoid stock imagery that makes the product feel like a bank, a crypto app, or a 
 - every new screen should follow the same primary, secondary, and accent color roles
 - every new user-facing message should match the calm and practical copy tone
 - every major design update should check this document together with `interface_design_ui_flow.md`
-- if the palette or typography changes in code, update this document and `lib/core/theme/app_theme.dart` together
+- if the palette or typography changes in code, update this document and every place that implements it, together:
+
+| Surface | Palette | Typeface |
+| --- | --- | --- |
+| Flutter app | `lib/core/theme/app_theme.dart` | `google_fonts` |
+| Web app | `src/app/styles.css` (HSL custom properties) | `@import` at the top of the same file |
+| Landing page | `tailwind.config.js` and `app/globals.css` | `next/font/google` in `app/layout.jsx` |
+
+The landing page is the reference for how the palette should feel in the wild;
+it is where the brand teal has always been used as intended.
 
 ## Summary
 
