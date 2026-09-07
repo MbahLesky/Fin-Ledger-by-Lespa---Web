@@ -8,6 +8,11 @@ export const SETTINGS_ROW_ID = "app-settings";
 
 export const NOTIFICATION_PREFERENCES_ID = "notification-preferences";
 
+// Cash alone, matching the Flutter app's buildSystemDefaultAccounts. "Default"
+// is where an entry that names no account goes -- including one logged through
+// the WhatsApp bot -- so exactly one account can hold the flag; with Bank
+// seeded as a default too, which of the two received it came down to row order.
+// A bank account is created like any other, from the balances step.
 export const DEFAULT_ACCOUNTS: Array<{
   id: string;
   name: string;
@@ -19,12 +24,6 @@ export const DEFAULT_ACCOUNTS: Array<{
     name: "Cash",
     type: "cash",
     displayOrder: 0
-  },
-  {
-    id: "default-bank",
-    name: "Bank",
-    type: "bank",
-    displayOrder: 1
   }
 ];
 

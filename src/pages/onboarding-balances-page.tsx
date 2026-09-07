@@ -103,7 +103,7 @@ export function OnboardingBalancesPage() {
           <p className="text-sm font-semibold uppercase tracking-[0.22em] text-secondary">Onboarding</p>
           <h1 className="text-4xl font-bold">Set Your Starting Balances</h1>
           <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
-            Cash and Bank always stay visible. Add custom balance containers like MoMo, Wallet, or Savings if you use them.
+            Cash always stays visible. Add balance containers like Bank, MoMo, Wallet, or Savings if you use them.
           </p>
         </div>
 
